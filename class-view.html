@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Class · Vermeil Quest</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="toastBox" style="position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;width:min(400px,92vw)"></div>
+<div class="student-wrap">
+  <div class="stu-header anim-float">
+    <a href="dashboard.html" class="btn btn-ghost btn-sm">← Home</a>
+    <div id="classHeaderRight"></div>
+  </div>
+
+  <!-- Class hero -->
+  <div class="card profile-hero anim-float d1" id="classHero" style="padding:24px;text-align:center">
+    <div style="font-size:48px">📘</div>
+    <div class="hero-name" id="className">Loading…</div>
+    <div class="hero-meta mt-4" id="classMeta">—</div>
+    <div class="stat-row w-full mt-12">
+      <div class="stat-box"><span class="sv" id="classStudentCount">0</span><span class="sl">Students</span></div>
+      <div class="stat-box"><span class="sv" id="classTaskCount">0</span><span class="sl">Tasks</span></div>
+      <div class="stat-box"><span class="sv" id="classAvgXP">0</span><span class="sl">Avg XP</span></div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="card anim-float d2" style="overflow:hidden">
+    <div class="tabs" style="padding:0 16px">
+      <button class="tab active" onclick="switchTab('tasks',this)">⚔️ Tasks</button>
+      <button class="tab" onclick="switchTab('materials',this)">📖 Materials</button>
+      <button class="tab" onclick="switchTab('members',this)">👥 Members</button>
+      <button class="tab" onclick="switchTab('announce',this)">📣 Updates</button>
+    </div>
+
+    <div id="tab-tasks" style="padding:16px">
+      <div id="taskList"><div class="empty"><div class="ei">⚔️</div><p>No tasks yet for this class.</p></div></div>
+    </div>
+    <div id="tab-materials" class="hidden" style="padding:16px">
+      <div id="materialList"><div class="empty"><div class="ei">📖</div><p>No reading materials yet.</p></div></div>
+    </div>
+    <div id="tab-members" class="hidden" style="padding:16px">
+      <div id="memberList"><div class="empty"><div class="ei">👥</div><p>No members loaded.</p></div></div>
+    </div>
+    <div id="tab-announce" class="hidden" style="padding:16px">
+      <div id="announceList"><div class="empty"><div class="ei">📣</div><p>No class announcements.</p></div></div>
+    </div>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <a href="dashboard.html" class="bnav-item"><span class="bi">🏠</span>Home</a>
+  <a href="quests.html"    class="bnav-item active"><span class="bi">⚔️</span>Quests</a>
+  <a href="leaderboard.html" class="bnav-item"><span class="bi">🏆</span>Ranks</a>
+  <a href="surveys.html"   class="bnav-item"><span class="bi">📋</span>Surveys</a>
+  <a href="profile.html"   class="bnav-item"><span class="bi">👤</span>Profile</a>
+</nav>
+
+<script type="module">
+import { queryDocs, getDoc_, getSession, progTag, getLevel, getRankTitle } from "./firebase.js";
+const S = getSession(); if(!S?.id) location.href="index.html";
+const classId = new URLSearchParams(location.search).get("id");
+if(!classId) location.href="dashboard.html";
+
+let classData=null, tasks=[], members=[];
+
+async function load() {
+  classData = await getDoc_("classes", classId);
+  if(!classData){document.getElementById("classHero").innerHTML=`<div class="empty"><p>Class not found.</p></div>`;return;}
+
+  setText("className",  classData.name||"Class");
+  setText("classMeta",  `${classData.teacherName||"—"} · ${classData.section||"—"}`);
+  document.getElementById("classHeaderRight").innerHTML = progTag(classData.program||"");
+
+  // Load tasks & materials
+  tasks = await queryDocs("tasks",[["classId","==",classId]],[["dueDate","asc"]],100);
+  const taskItems    = tasks.filter(t=>t.type==="task"||t.type==="quiz");
+  const materialItems= tasks.filter(t=>t.type==="lecture");
+  setText("classTaskCount", taskItems.length);
+
+  renderTasks(taskItems);
+  renderMaterials(materialItems);
+
+  // Load members
+  const studentIds = classData.students||[];
+  setText("classStudentCount", studentIds.length);
+  const memberData=[];
+  for(const sid of studentIds.slice(0,30)){
+    const sd=await getDoc_("students",sid);
+    if(sd) memberData.push(sd);
+  }
+  members=memberData;
+  const avgXP = memberData.length ? Math.round(memberData.reduce((s,m)=>s+(m.xp||0),0)/memberData.length) : 0;
+  setText("classAvgXP", avgXP);
+  renderMembers(memberData);
+
+  // Announcements for this class
+  const anns = await queryDocs("announcements",[["classId","==",classId]],[["createdAt","desc"]],20);
+  renderAnnouncements(anns);
+}
+
+function renderTasks(list){
+  const el=document.getElementById("taskList");
+  if(!list.length){el.innerHTML=`<div class="empty"><div class="ei">⚔️</div><p>No tasks assigned yet.</p></div>`;return;}
+  const icons={task:"📋",quiz:"❓"};
+  el.innerHTML=list.map(t=>{
+    const due=t.dueDate?.seconds?new Date(t.dueDate.seconds*1000):new Date();
+    const done=(t.submittedBy||[]).includes(S.id);
+    const over=!done&&due<new Date();
+    return `<div class="quest-card ${done?"done":over?"overdue":""}" onclick="location.href='quest-detail.html?id=${t.id}'">
+      <div class="quest-icon">${icons[t.type]||"📋"}</div>
+      <div class="quest-body">
+        <div class="quest-title">${t.title||"Untitled"}</div>
+        <div class="quest-meta">Due: ${due.toLocaleDateString()} · ${done?"✅ Submitted":over?"❗ Overdue":"Pending"}</div>
+      </div>
+      <div class="quest-xp">+${t.maxXP||0} XP</div>
+    </div>`;
+  }).join("");
+}
+
+function renderMaterials(list){
+  const el=document.getElementById("materialList");
+  if(!list.length){el.innerHTML=`<div class="empty"><div class="ei">📖</div><p>No reading materials yet.</p></div>`;return;}
+  el.innerHTML=list.map(t=>`
+    <div class="quest-card" onclick="${t.link?`window.open('${t.link}','_blank')`:`location.href='quest-detail.html?id=${t.id}'`}">
+      <div class="quest-icon">📖</div>
+      <div class="quest-body">
+        <div class="quest-title">${t.title||"Material"}</div>
+        <div class="quest-meta">${t.description||"Reading material"}</div>
+      </div>
+      <span class="badge b-teal">Read</span>
+    </div>`).join("");
+}
+
+function renderMembers(list){
+  const el=document.getElementById("memberList");
+  if(!list.length){el.innerHTML=`<div class="empty"><div class="ei">👥</div><p>No members found.</p></div>`;return;}
+  const sorted=[...list].sort((a,b)=>(b.xp||0)-(a.xp||0));
+  el.innerHTML=sorted.map((m,i)=>{
+    const lvl=getLevel(m.xp||0), rank=getRankTitle(lvl);
+    const isMe=m.id===S.id;
+    return `<div class="lb-row ${isMe?"me":""}">
+      <div class="lb-rank ${i<3?"r"+(i+1):""}">${i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`}</div>
+      <div class="avatar" style="width:32px;height:32px;font-size:12px">${(m.name||"?")[0].toUpperCase()}</div>
+      <div class="lb-info">
+        <div class="lb-name">${m.name||"—"}${isMe?" (You)":""}</div>
+        <div class="lb-sub"><span style="color:${rank.color};font-size:10px">${rank.label}</span> · 🔥 ${m.streak||0}</div>
+      </div>
+      <div class="lb-xp">${(m.xp||0).toLocaleString()} XP</div>
+    </div>`;
+  }).join("");
+}
+
+function renderAnnouncements(list){
+  const el=document.getElementById("announceList");
+  if(!list.length){el.innerHTML=`<div class="empty"><div class="ei">📣</div><p>No announcements yet.</p></div>`;return;}
+  el.innerHTML=list.map(a=>`
+    <div style="padding:14px;border-bottom:1px solid var(--border)">
+      <div class="font-display" style="font-size:13px;color:var(--blue-200);margin-bottom:6px">${a.title||"—"}</div>
+      <p style="font-size:13px;color:var(--text-2);line-height:1.55">${a.body||""}</p>
+      <div class="text-muted mt-8">By ${a.authorName||"teacher"}</div>
+    </div>`).join("");
+}
+
+window.switchTab=function(name,btn){
+  ["tasks","materials","members","announce"].forEach(t=>{
+    document.getElementById("tab-"+t)?.classList.toggle("hidden",t!==name);
+  });
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  btn.classList.add("active");
+};
+
+function setText(id,v){const e=document.getElementById(id);if(e)e.textContent=v}
+load();
+</script>
+</body></html>

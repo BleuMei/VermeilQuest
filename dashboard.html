@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard · Vermeil Quest</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="toastBox" style="position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;width:min(400px,92vw)"></div>
+
+<div class="student-wrap">
+
+  <!-- TOP HEADER -->
+  <div class="stu-header anim-float">
+    <div class="stu-logo">
+      <h1 style="font-size:20px;letter-spacing:2px">Vermeil Quest</h1>
+      <p class="subtitle">Academy Interface</p>
+    </div>
+    <div class="stu-topright">
+      <div class="notif-btn" id="notifBtn" onclick="toggleNotif()">
+        🔔
+        <span class="notif-dot hidden" id="notifDot"></span>
+        <div class="notif-drop hidden" id="notifDrop"></div>
+      </div>
+      <div class="avatar" id="headerAvatar" style="cursor:pointer" onclick="location.href='profile.html'">?</div>
+    </div>
+  </div>
+
+  <!-- PROFILE HERO -->
+  <div class="card profile-hero anim-float d1">
+    <div class="avatar avatar-xl" id="heroAvatar">?</div>
+    <div>
+      <div class="hero-name" id="heroName">Loading…</div>
+      <div class="hero-rank mt-4" id="heroRank">—</div>
+      <div class="hero-meta mt-4" id="heroProg">—</div>
+    </div>
+    <div class="stat-row w-full" style="margin-top:4px">
+      <div class="stat-box">
+        <span class="sv" id="statLevel">1</span>
+        <span class="sl">Level</span>
+      </div>
+      <div class="stat-box">
+        <span class="sv" id="statXP">0</span>
+        <span class="sl">Total XP</span>
+      </div>
+      <div class="stat-box">
+        <span class="sv gold" id="statStreak">0</span>
+        <span class="sl">Streak 🔥</span>
+      </div>
+      <div class="stat-box">
+        <span class="sv" id="statRank">—</span>
+        <span class="sl">Dept. Rank</span>
+      </div>
+    </div>
+    <!-- XP bar -->
+    <div class="w-full" style="margin-top:4px">
+      <div class="xp-track"><div class="xp-fill" id="xpFill" style="width:0%"></div></div>
+      <div class="xp-row"><span id="xpProg">0 / 100 XP</span><span id="xpNext">100 to next level</span></div>
+    </div>
+  </div>
+
+  <!-- DAILY STREAK ORB -->
+  <div class="card orb-section anim-float d2">
+    <div class="sec-title">Daily Quest</div>
+    <div class="orb-wrap" style="margin-top:12px">
+      <div class="orb" id="mainOrb" onclick="openStreakModal()">
+        <div class="spark"></div><div class="spark"></div><div class="spark"></div>
+        <div class="spark"></div><div class="spark"></div>
+        <div class="orb-inner" id="orbIcon">🔮</div>
+      </div>
+    </div>
+    <div class="orb-streak-num" id="orbStreakNum">0</div>
+    <div class="orb-streak-lbl">Day Streak</div>
+    <div class="orb-hint" id="orbHint">Tap the orb to claim today's reward</div>
+  </div>
+
+  <!-- QUICK STATS -->
+  <div class="flex gap-8 anim-float d2" style="flex-wrap:wrap">
+    <div class="card card-body flex-col items-center" style="flex:1;min-width:120px;gap:6px;text-align:center">
+      <span style="font-size:24px">📋</span>
+      <span class="font-display" style="font-size:20px;color:var(--blue-300)" id="qsPending">0</span>
+      <span class="text-muted">Pending Tasks</span>
+    </div>
+    <div class="card card-body flex-col items-center" style="flex:1;min-width:120px;gap:6px;text-align:center">
+      <span style="font-size:24px">🏅</span>
+      <span class="font-display" style="font-size:20px;color:var(--gold-light)" id="qsBadges">0</span>
+      <span class="text-muted">Badges</span>
+    </div>
+    <div class="card card-body flex-col items-center" style="flex:1;min-width:120px;gap:6px;text-align:center">
+      <span style="font-size:24px">📝</span>
+      <span class="font-display" style="font-size:20px;color:var(--blue-300)" id="qsSurveys">0</span>
+      <span class="text-muted">Surveys Done</span>
+    </div>
+  </div>
+
+  <!-- ACTIVE QUESTS -->
+  <div class="anim-float d3">
+    <div class="flex items-center justify-between mb-8">
+      <div class="sec-title">Active Quests</div>
+      <a href="quests.html" class="btn btn-ghost btn-sm">View All</a>
+    </div>
+    <div id="questFeed">
+      <div class="empty"><div class="ei">⚔️</div><p>No active quests. Your teacher will assign some soon.</p></div>
+    </div>
+  </div>
+
+  <!-- MY CLASSES -->
+  <div class="anim-float d3">
+    <div class="flex items-center justify-between mb-8">
+      <div class="sec-title">My Classes</div>
+    </div>
+    <div class="class-grid" id="classGrid">
+      <div class="empty"><div class="ei">📚</div><p>No classes yet. Your teacher will add you soon.</p></div>
+    </div>
+  </div>
+
+  <!-- AVAILABLE SURVEYS -->
+  <div class="anim-float d4">
+    <div class="flex items-center justify-between mb-8">
+      <div class="sec-title">Surveys · Earn XP</div>
+      <a href="surveys.html" class="btn btn-ghost btn-sm">View All</a>
+    </div>
+    <div id="surveyPreview">
+      <div class="empty"><div class="ei">📋</div><p>No surveys available right now.</p></div>
+    </div>
+  </div>
+
+  <!-- THE VAULT -->
+  <div class="anim-float d4">
+    <div class="flex items-center justify-between mb-8">
+      <div class="sec-title">⚗️ The Vault · Courses</div>
+    </div>
+    <div id="vaultGrid">
+      <div class="empty"><div class="ei">🗝️</div><p>No featured courses yet. Check back later.</p></div>
+    </div>
+  </div>
+
+  <!-- ANNOUNCEMENTS -->
+  <div class="anim-float d5">
+    <div class="flex items-center justify-between mb-8">
+      <div class="sec-title">Announcements</div>
+    </div>
+    <div id="announcements">
+      <div class="empty"><div class="ei">📣</div><p>No announcements.</p></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <a href="dashboard.html" class="bnav-item active"><span class="bi">🏠</span>Home</a>
+  <a href="quests.html"    class="bnav-item"><span class="bi">⚔️</span>Quests</a>
+  <a href="leaderboard.html" class="bnav-item"><span class="bi">🏆</span>Ranks</a>
+  <a href="surveys.html"   class="bnav-item"><span class="bi">📋</span>Surveys</a>
+  <a href="profile.html"   class="bnav-item"><span class="bi">👤</span>Profile</a>
+</nav>
+
+<!-- STREAK MODAL -->
+<div class="overlay" id="streakOverlay">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-hd">
+      <h3>Daily Quest Orb</h3>
+      <button class="modal-close" onclick="closeStreakModal()">✕</button>
+    </div>
+    <div style="text-align:center;margin-bottom:20px">
+      <div class="orb-streak-num" id="mStreakNum">0</div>
+      <div class="orb-streak-lbl" style="margin-top:4px">Day Streak</div>
+      <p class="text-muted" style="margin-top:8px;font-family:var(--prose);font-style:italic" id="mStreakMsg">Claim your daily reward to keep your streak alive!</p>
+    </div>
+    <div class="streak-track" id="streakTrack"></div>
+    <div style="text-align:center;margin-top:20px">
+      <div class="orb-wrap" style="justify-content:center">
+        <div class="orb" id="modalOrb" onclick="claimReward()" style="width:90px;height:90px">
+          <div class="spark"></div><div class="spark"></div><div class="spark"></div>
+          <div class="orb-inner" style="font-size:34px" id="mOrbIcon">🔮</div>
+        </div>
+      </div>
+      <p style="font-size:13px;color:var(--blue-300);margin-top:12px;font-family:var(--display);letter-spacing:1px" id="mXPLabel">+0 XP today</p>
+    </div>
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+      <p class="text-muted text-center" style="font-size:11px;letter-spacing:1px">MILESTONE ACHIEVEMENTS</p>
+      <div class="flex gap-8" style="margin-top:10px;flex-wrap:wrap;justify-content:center">
+        <span class="badge b-blue">🔥 7 days → Faithful</span>
+        <span class="badge b-purple">💫 30 days → Devoted</span>
+        <span class="badge b-gold">⭐ 100 days → Legendary Flame</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LEVEL UP -->
+<div class="lvlup hidden" id="lvlupOverlay" onclick="this.classList.add('hidden')">
+  <div class="lvlup-card">
+    <p class="subtitle" style="color:var(--gold-light);text-shadow:var(--gg)">LEVEL UP</p>
+    <div class="lvlup-num" id="lvlupNum">2</div>
+    <p style="font-family:var(--prose);font-style:italic;color:var(--text-2);margin-top:8px" id="lvlupTitle">Apprentice</p>
+    <button class="btn btn-gold btn-full" style="margin-top:28px" onclick="document.getElementById('lvlupOverlay').classList.add('hidden')">Continue Quest ⚔️</button>
+  </div>
+</div>
+
+<script type="module" src="dashboard.js"></script>
+</body>
+</html>

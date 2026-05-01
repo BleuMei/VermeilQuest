@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings · Vermeil Quest</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="toastBox" style="position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;width:min(400px,92vw)"></div>
+<div class="student-wrap">
+  <div class="stu-header anim-float">
+    <div class="stu-logo"><h1 style="font-size:20px">Vermeil Quest</h1><p class="subtitle">Settings</p></div>
+    <a href="dashboard.html" class="btn btn-ghost btn-sm">← Back</a>
+  </div>
+
+  <!-- Account Info -->
+  <div class="card card-body anim-float d1">
+    <div class="sec-title mb-16">Account Information</div>
+    <div class="flex items-center gap-16 mb-16">
+      <div class="avatar avatar-lg" id="setAvatar">?</div>
+      <div><div class="font-display" style="font-size:16px" id="setName">—</div>
+        <div class="text-muted mt-4" id="setId">—</div>
+        <div class="mt-4" id="setRole"></div>
+      </div>
+    </div>
+    <div class="divider mb-16"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div><label class="lbl">Program</label><div style="font-size:14px;color:var(--text-2);padding:10px 0" id="setProg">—</div></div>
+      <div><label class="lbl">Section</label><div style="font-size:14px;color:var(--text-2);padding:10px 0" id="setSec">—</div></div>
+      <div><label class="lbl">Year Level</label><div style="font-size:14px;color:var(--text-2);padding:10px 0" id="setYear">—</div></div>
+      <div><label class="lbl">Email</label><div style="font-size:14px;color:var(--text-2);padding:10px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="setEmail">—</div></div>
+    </div>
+  </div>
+
+  <!-- Change Password -->
+  <div class="card card-body anim-float d2">
+    <div class="sec-title mb-16">Change Password</div>
+    <label class="lbl">Current Password</label>
+    <input type="password" id="curPw" placeholder="Enter current password" style="margin-bottom:12px">
+    <label class="lbl">New Password</label>
+    <input type="password" id="newPw" placeholder="Enter new password" style="margin-bottom:12px">
+    <label class="lbl">Confirm New Password</label>
+    <input type="password" id="confPw" placeholder="Repeat new password" style="margin-bottom:16px">
+    <button class="btn btn-primary" id="changePwBtn" onclick="changePassword()">Update Password</button>
+  </div>
+
+  <!-- Notifications -->
+  <div class="card card-body anim-float d3">
+    <div class="sec-title mb-16">Notifications</div>
+    <div class="settings-row">
+      <div><div style="font-size:13px;color:var(--text-2);font-weight:600">Task Notifications</div><div class="text-muted">When teacher assigns a new task</div></div>
+      <label class="toggle"><input type="checkbox" id="togTask" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+    </div>
+    <div class="settings-row">
+      <div><div style="font-size:13px;color:var(--text-2);font-weight:600">Grade Notifications</div><div class="text-muted">When your submission is graded</div></div>
+      <label class="toggle"><input type="checkbox" id="togGrade" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+    </div>
+    <div class="settings-row">
+      <div><div style="font-size:13px;color:var(--text-2);font-weight:600">Achievement Alerts</div><div class="text-muted">When you unlock a badge</div></div>
+      <label class="toggle"><input type="checkbox" id="togAch" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+    </div>
+    <div class="settings-row">
+      <div><div style="font-size:13px;color:var(--text-2);font-weight:600">Announcements</div><div class="text-muted">System-wide announcements</div></div>
+      <label class="toggle"><input type="checkbox" id="togAnn" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+    </div>
+    <button class="btn btn-ghost" style="margin-top:12px" onclick="saveNotifPrefs()">Save Preferences</button>
+  </div>
+
+  <!-- Danger zone -->
+  <div class="card card-body anim-float d4" style="border-color:rgba(239,68,68,.2)">
+    <div class="sec-title mb-16" style="color:#fca5a5">⚠️ Account</div>
+    <button class="btn btn-danger btn-full" onclick="logout()">Sign Out of Vermeil Quest</button>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <a href="dashboard.html" class="bnav-item"><span class="bi">🏠</span>Home</a>
+  <a href="quests.html"    class="bnav-item"><span class="bi">⚔️</span>Quests</a>
+  <a href="leaderboard.html" class="bnav-item"><span class="bi">🏆</span>Ranks</a>
+  <a href="surveys.html"   class="bnav-item"><span class="bi">📋</span>Surveys</a>
+  <a href="profile.html"   class="bnav-item"><span class="bi">👤</span>Profile</a>
+</nav>
+
+<script type="module">
+import { db, getDoc_, updateDoc_, getSession, saveSession, clearSession, toast, doc, updateDoc } from "./firebase.js";
+const S=getSession(); if(!S?.id) location.href="index.html";
+
+function setText(id,v){const e=document.getElementById(id);if(e)e.textContent=v}
+
+function load(){
+  document.getElementById("setAvatar").textContent=(S.name||"?")[0].toUpperCase();
+  setText("setName",  S.name||"Unknown");
+  setText("setId",    `ID: ${S.id}`);
+  setText("setProg",  S.program||"—");
+  setText("setSec",   S.section||"—");
+  setText("setYear",  S.yearLevel?`${S.yearLevel}${["","st","nd","rd","th"][S.yearLevel]||"th"} Year`:"—");
+  setText("setEmail", S.email||"—");
+  document.getElementById("setRole").innerHTML=`<span class="badge b-blue">${S.role||"student"}</span>`;
+  const prefs=S.settings||{};
+  document.getElementById("togTask").checked  = prefs.notifTask  !== false;
+  document.getElementById("togGrade").checked = prefs.notifGrade !== false;
+  document.getElementById("togAch").checked   = prefs.notifAch   !== false;
+  document.getElementById("togAnn").checked   = prefs.notifAnn   !== false;
+}
+
+window.changePassword=async function(){
+  const cur=document.getElementById("curPw").value;
+  const nw =document.getElementById("newPw").value;
+  const con=document.getElementById("confPw").value;
+  const stored=S.password||S.id;
+  if(cur!==stored){toast("Current password is incorrect","error");return;}
+  if(nw.length<6){toast("New password must be at least 6 characters","warn");return;}
+  if(nw!==con){toast("Passwords do not match","error");return;}
+  const btn=document.getElementById("changePwBtn");
+  btn.classList.add("btn-loading"); btn.textContent="";
+  try{
+    await updateDoc(doc(db,"students",S.id),{password:nw});
+    S.password=nw; saveSession(S);
+    toast("Password updated!","success");
+    document.getElementById("curPw").value=""; document.getElementById("newPw").value=""; document.getElementById("confPw").value="";
+  }catch{toast("Error updating password","error");}
+  finally{btn.classList.remove("btn-loading"); btn.textContent="Update Password";}
+};
+
+window.saveNotifPrefs=async function(){
+  const settings={
+    notifTask: document.getElementById("togTask").checked,
+    notifGrade:document.getElementById("togGrade").checked,
+    notifAch:  document.getElementById("togAch").checked,
+    notifAnn:  document.getElementById("togAnn").checked,
+  };
+  try{
+    await updateDoc(doc(db,"students",S.id),{settings});
+    S.settings=settings; saveSession(S);
+    toast("Preferences saved!","success");
+  }catch{toast("Error saving preferences","error");}
+};
+
+window.logout=function(){
+  if(confirm("Sign out of Vermeil Quest?")){
+    clearSession(); location.href="index.html";
+  }
+};
+
+load();
+</script>
+</body></html>

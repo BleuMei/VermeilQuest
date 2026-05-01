@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leaderboard · Vermeil Quest</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="toastBox" style="position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;width:min(400px,92vw)"></div>
+<div class="student-wrap">
+  <div class="stu-header anim-float">
+    <div class="stu-logo"><h1 style="font-size:20px;letter-spacing:2px">Vermeil Quest</h1><p class="subtitle">Leaderboard</p></div>
+    <a href="dashboard.html" class="btn btn-ghost btn-sm">← Home</a>
+  </div>
+
+  <div class="card anim-float d1">
+    <div class="card-body">
+      <h2 style="text-align:center;margin-bottom:4px">🏆 Hall of Champions</h2>
+      <p class="text-muted text-center">ECT Department Rankings</p>
+      <div class="tabs" style="margin-top:20px">
+        <button class="tab active" onclick="switchTab('dept')">🏫 Department</button>
+        <button class="tab" onclick="switchTab('program')">📚 Program</button>
+        <button class="tab" onclick="switchTab('year')">🎓 Year Level</button>
+        <button class="tab" onclick="switchTab('section')">👥 Section</button>
+      </div>
+
+      <!-- Filters -->
+      <div id="filterRow" class="hidden" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <select id="filterProgram" onchange="applyFilter()" style="flex:1;min-width:120px">
+          <option value="">All Programs</option>
+          <option value="IT">IT</option><option value="CS">CS</option>
+          <option value="CoE">CoE</option><option value="ECE">ECE</option>
+        </select>
+        <select id="filterYear" onchange="applyFilter()" style="flex:1;min-width:120px">
+          <option value="">All Years</option>
+          <option value="1">1st Year</option><option value="2">2nd Year</option>
+          <option value="3">3rd Year</option><option value="4">4th Year</option>
+        </select>
+      </div>
+
+      <div id="lbContent"><div class="empty"><div class="ei">🏆</div><p>Loading rankings…</p></div></div>
+    </div>
+  </div>
+
+  <!-- My rank card -->
+  <div class="card card-body anim-float d2" id="myRankCard" style="text-align:center">
+    <p class="subtitle">YOUR RANK</p>
+    <div class="font-display" style="font-size:48px;color:var(--blue-300);text-shadow:var(--g2)" id="myRankNum">—</div>
+    <p class="text-muted" id="myRankCtx">Loading…</p>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <a href="dashboard.html" class="bnav-item"><span class="bi">🏠</span>Home</a>
+  <a href="quests.html"    class="bnav-item"><span class="bi">⚔️</span>Quests</a>
+  <a href="leaderboard.html" class="bnav-item active"><span class="bi">🏆</span>Ranks</a>
+  <a href="surveys.html"   class="bnav-item"><span class="bi">📋</span>Surveys</a>
+  <a href="profile.html"   class="bnav-item"><span class="bi">👤</span>Profile</a>
+</nav>
+
+<script type="module">
+import { queryDocs, getSession, progTag, getRankTitle, getLevel, PROGRAM_META } from "./firebase.js";
+const S = getSession();
+if (!S?.id) location.href="index.html";
+
+let currentTab="dept", allStudents=[], currentList=[];
+
+async function loadAll() {
+  allStudents = await queryDocs("students",[],[["xp","desc"]],500);
+  render();
+}
+
+function switchTab(tab) {
+  window.switchTab = switchTab;
+  currentTab=tab;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  event.target.classList.add("active");
+  const fr=document.getElementById("filterRow");
+  (tab==="program"||tab==="section"||tab==="year") ? fr.classList.remove("hidden") : fr.classList.add("hidden");
+  render();
+}
+window.switchTab = switchTab;
+
+function applyFilter() { render(); }
+window.applyFilter = applyFilter;
+
+function render() {
+  const prog = document.getElementById("filterProgram")?.value||"";
+  const year = document.getElementById("filterYear")?.value||"";
+  let list = [...allStudents];
+  if (currentTab==="program" && prog) list=list.filter(s=>s.program===prog);
+  if (currentTab==="year"    && year) list=list.filter(s=>String(s.yearLevel)===year);
+  if (currentTab==="section")         list=list.filter(s=>s.section===S.section);
+  currentList=list;
+
+  const myPos = list.findIndex(s=>s.id===S.id)+1;
+  setText("myRankNum", myPos>0?`#${myPos}`:"Unranked");
+  setText("myRankCtx", `Out of ${list.length} students in this category`);
+
+  const el=document.getElementById("lbContent");
+  if (!list.length) { el.innerHTML=`<div class="empty"><div class="ei">🏆</div><p>No data for this filter.</p></div>`; return; }
+
+  el.innerHTML=`<div style="overflow:hidden;border-radius:var(--r2);border:1px solid var(--border)">
+    ${list.slice(0,50).map((stu,i)=>{
+      const rank=i+1, lvl=getLevel(stu.xp||0), rt=getRankTitle(lvl);
+      const isMe=stu.id===S.id;
+      const medal=rank===1?"🥇":rank===2?"🥈":rank===3?"🥉":`#${rank}`;
+      const topBadge=(stu.achievements||[]).find(a=>["rank-top1","rank-top3","streak-100","streak-30"].includes(a));
+      const ADATA={
+        "rank-top1":"👑","rank-top3":"🥈","streak-100":"⭐","streak-30":"💫",
+        "streak-7":"🔥","tasks-10":"⚔️","survey-10":"📋","perfect-score":"💎"
+      };
+      return `<div class="lb-row ${isMe?"me":""}">
+        <div class="lb-rank ${rank<=3?"r"+rank:""}">${medal}</div>
+        <div class="avatar" style="width:32px;height:32px;font-size:12px">${(stu.name||"?")[0].toUpperCase()}</div>
+        <div class="lb-info">
+          <div class="lb-name">${stu.name||"Unknown"}${isMe?" (You)":""}</div>
+          <div class="lb-sub">${progTag(stu.program||"")} <span style="color:${rt.color};font-size:10px">${rt.label}</span> ${topBadge?ADATA[topBadge]||"":""}</div>
+        </div>
+        <div class="lb-xp">${(stu.xp||0).toLocaleString()} XP</div>
+      </div>`;
+    }).join("")}
+  </div>`;
+}
+
+function setText(id,v){const e=document.getElementById(id);if(e)e.textContent=v}
+loadAll();
+</script>
+</body></html>

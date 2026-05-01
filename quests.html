@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quests · Vermeil Quest</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="toastBox" style="position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;width:min(400px,92vw)"></div>
+<div class="student-wrap">
+  <div class="stu-header anim-float">
+    <div class="stu-logo"><h1 style="font-size:20px">Vermeil Quest</h1><p class="subtitle">Active Quests</p></div>
+    <a href="dashboard.html" class="btn btn-ghost btn-sm">← Home</a>
+  </div>
+
+  <div class="card card-body anim-float d1">
+    <div class="tabs">
+      <button class="tab active" onclick="filterTasks('all',this)">All</button>
+      <button class="tab" onclick="filterTasks('task',this)">📋 Tasks</button>
+      <button class="tab" onclick="filterTasks('quiz',this)">❓ Quizzes</button>
+      <button class="tab" onclick="filterTasks('lecture',this)">📖 Materials</button>
+      <button class="tab" onclick="filterTasks('done',this)">✅ Done</button>
+    </div>
+    <div class="search-wrap mb-12">
+      <input id="questSearch" placeholder="Search quests…" oninput="applyFilter()">
+    </div>
+    <div id="questList"><div class="empty"><div class="ei">⚔️</div><p>Loading quests…</p></div></div>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <a href="dashboard.html" class="bnav-item"><span class="bi">🏠</span>Home</a>
+  <a href="quests.html"    class="bnav-item active"><span class="bi">⚔️</span>Quests</a>
+  <a href="leaderboard.html" class="bnav-item"><span class="bi">🏆</span>Ranks</a>
+  <a href="surveys.html"   class="bnav-item"><span class="bi">📋</span>Surveys</a>
+  <a href="profile.html"   class="bnav-item"><span class="bi">👤</span>Profile</a>
+</nav>
+
+<script type="module">
+import { queryDocs, getSession } from "./firebase.js";
+const S=getSession(); if(!S?.id) location.href="index.html";
+
+let allTasks=[], activeFilter="all";
+
+async function load(){
+  allTasks=await queryDocs("tasks",[["assignedTo","array-contains",S.id]],[["dueDate","asc"]],100);
+  renderList();
+}
+
+function filterTasks(type, btn){
+  activeFilter=type;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  btn.classList.add("active");
+  renderList();
+}
+window.filterTasks=filterTasks;
+
+function applyFilter(){ renderList(); }
+window.applyFilter=applyFilter;
+
+function renderList(){
+  const q=document.getElementById("questSearch").value.toLowerCase();
+  let list=allTasks.filter(t=>{
+    const done=(t.submittedBy||[]).includes(S.id);
+    if(activeFilter==="done" && !done) return false;
+    if(activeFilter!=="all"&&activeFilter!=="done"&&t.type!==activeFilter) return false;
+    if(q&&!(t.title||"").toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  const el=document.getElementById("questList");
+  if(!list.length){el.innerHTML=`<div class="empty"><div class="ei">⚔️</div><p>No quests found.</p></div>`;return;}
+  const icons={task:"📋",quiz:"❓",lecture:"📖"};
+  el.innerHTML=list.map(t=>{
+    const due=t.dueDate?.seconds?new Date(t.dueDate.seconds*1000):new Date();
+    const done=(t.submittedBy||[]).includes(S.id);
+    const over=!done&&due<new Date();
+    return `<div class="quest-card ${done?"done":over?"overdue":""}" onclick="location.href='quest-detail.html?id=${t.id}'">
+      <div class="quest-icon">${icons[t.type]||"📋"}</div>
+      <div class="quest-body">
+        <div class="quest-title">${t.title||"Untitled"}</div>
+        <div class="quest-meta">Due: ${due.toLocaleDateString()} · ${t.type||"task"} · ${done?"✅ Submitted":over?"❗ Overdue":"Pending"}</div>
+      </div>
+      <div class="quest-xp">+${t.maxXP||0} XP</div>
+    </div>`;
+  }).join("");
+}
+
+load();
+</script>
+</body></html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quest Detail · Vermeil Quest</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="toastBox" style="position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;width:min(400px,92vw)"></div>
+<div class="student-wrap">
+  <div class="stu-header anim-float">
+    <a href="quests.html" class="btn btn-ghost btn-sm">← Back</a>
+    <div class="stu-topright" id="questStatus"></div>
+  </div>
+
+  <div class="card card-body anim-float d1" id="questDetail">
+    <div class="empty"><div class="ei">⚔️</div><p>Loading quest…</p></div>
+  </div>
+
+  <!-- Submit -->
+  <div class="card card-body anim-float d2" id="submitSection">
+    <div class="sec-title mb-12">Submit Your Work</div>
+    <label class="lbl">Submission Link or Answer</label>
+    <textarea id="submitText" placeholder="Paste your Google Drive link, answer, or any relevant text…" style="margin-bottom:12px"></textarea>
+    <button class="btn btn-primary btn-full" id="submitBtn" onclick="submitTask()">Submit Quest</button>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <a href="dashboard.html" class="bnav-item"><span class="bi">🏠</span>Home</a>
+  <a href="quests.html"    class="bnav-item active"><span class="bi">⚔️</span>Quests</a>
+  <a href="leaderboard.html" class="bnav-item"><span class="bi">🏆</span>Ranks</a>
+  <a href="surveys.html"   class="bnav-item"><span class="bi">📋</span>Surveys</a>
+  <a href="profile.html"   class="bnav-item"><span class="bi">👤</span>Profile</a>
+</nav>
+
+<script type="module">
+import { db, getDoc_, addDoc_, getSession, toast, doc, updateDoc, arrayUnion, serverTimestamp } from "./firebase.js";
+const S=getSession(); if(!S?.id) location.href="index.html";
+const params=new URLSearchParams(location.search), taskId=params.get("id");
+if(!taskId){location.href="quests.html";}
+
+let task=null;
+
+async function load(){
+  task=await getDoc_("tasks",taskId);
+  if(!task){document.getElementById("questDetail").innerHTML=`<div class="empty"><div class="ei">❌</div><p>Quest not found.</p></div>`;return;}
+  const due=task.dueDate?.seconds?new Date(task.dueDate.seconds*1000):new Date();
+  const done=(task.submittedBy||[]).includes(S.id);
+  const over=!done&&due<new Date();
+  const icons={task:"📋",quiz:"❓",lecture:"📖"};
+
+  document.getElementById("questStatus").innerHTML = done
+    ? `<span class="badge b-green">✅ Submitted</span>`
+    : over ? `<span class="badge b-red">❗ Overdue</span>`
+    : `<span class="badge b-blue">Pending</span>`;
+
+  document.getElementById("questDetail").innerHTML=`
+    <div class="flex items-center gap-12 mb-16">
+      <div class="quest-icon" style="width:52px;height:52px;font-size:26px">${icons[task.type]||"📋"}</div>
+      <div>
+        <h2 style="text-align:left;font-size:18px">${task.title||"Quest"}</h2>
+        <div class="text-muted mt-4">${task.type||"task"} · +${task.maxXP||0} XP max</div>
+      </div>
+    </div>
+    <div class="divider mb-16"></div>
+    <div class="sec-title mb-8">Description</div>
+    <p style="font-size:14px;color:var(--text-2);line-height:1.7;white-space:pre-wrap">${task.description||"No description provided."}</p>
+    ${task.link?`<a href="${task.link}" target="_blank" class="btn btn-ghost" style="margin-top:16px;width:auto">🔗 Open Resource</a>`:""}
+    <div class="divider" style="margin:16px 0"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="card-flat" style="padding:12px;text-align:center">
+        <div class="text-muted" style="font-size:10px;letter-spacing:2px">DUE DATE</div>
+        <div class="font-display" style="font-size:15px;color:${over?"var(--red)":"var(--text-2)"};margin-top:4px">${due.toLocaleDateString()}</div>
+      </div>
+      <div class="card-flat" style="padding:12px;text-align:center">
+        <div class="text-muted" style="font-size:10px;letter-spacing:2px">MAX XP</div>
+        <div class="font-display" style="font-size:15px;color:var(--blue-300);margin-top:4px">+${task.maxXP||0} XP</div>
+      </div>
+    </div>`;
+
+  if(done||task.type==="lecture"){
+    document.getElementById("submitSection").innerHTML=done
+      ?`<div class="empty" style="padding:24px"><div class="ei">✅</div><p style="color:var(--green)">Quest submitted! Awaiting grade from your teacher.</p></div>`
+      :`<div class="empty" style="padding:24px"><div class="ei">📖</div><p>This is a reading material. No submission needed.</p></div>`;
+  }
+}
+
+window.submitTask=async function(){
+  const content=document.getElementById("submitText").value.trim();
+  if(!content){toast("Enter your submission first","warn");return;}
+  const btn=document.getElementById("submitBtn");
+  btn.classList.add("btn-loading"); btn.textContent="";
+  try{
+    await addDoc_("submissions",{taskId,studentId:S.id,studentName:S.name,classId:task.classId||"",content,xpAwarded:0,graded:false});
+    await updateDoc(doc(db,"tasks",taskId),{submittedBy:arrayUnion(S.id)});
+    toast("Quest submitted! Your teacher will grade it soon.","success",4000);
+    setTimeout(()=>location.href="quests.html",1500);
+  }catch{toast("Submission failed","error");}
+  finally{btn.classList.remove("btn-loading"); btn.textContent="Submit Quest";}
+};
+
+load();
+</script>
+</body></html>

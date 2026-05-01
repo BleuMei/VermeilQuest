@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Portal · Vermeil Quest</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+<div id="toastBox" style="position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;width:min(400px,92vw)"></div>
+
+<div class="portal-wrap">
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sb-logo">
+    <h1>Vermeil Quest</h1><p class="subtitle">Admin Portal</p>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section">Dashboard</div>
+    <a class="nav-item active" onclick="showPage('overview',this)"><span class="ni">📊</span>Overview</a>
+    <a class="nav-item" onclick="showPage('analytics',this)"><span class="ni">📈</span>Analytics</a>
+    <div class="sb-section">Management</div>
+    <a class="nav-item" onclick="showPage('users',this)"><span class="ni">👥</span>Users</a>
+    <a class="nav-item" onclick="showPage('classes',this)"><span class="ni">📚</span>Classes</a>
+    <a class="nav-item" onclick="showPage('courses',this)"><span class="ni">⚗️</span>Vault Courses</a>
+    <div class="sb-section">Communication</div>
+    <a class="nav-item" onclick="showPage('announce',this)"><span class="ni">📣</span>Announcements</a>
+    <a class="nav-item" onclick="showPage('achievements',this)"><span class="ni">🏅</span>Achievements</a>
+    <div class="sb-section">System</div>
+    <a class="nav-item" onclick="showPage('audit',this)"><span class="ni">📋</span>Audit Log</a>
+  </nav>
+  <div class="sb-foot">
+    <div class="sb-user">
+      <div class="avatar" id="sbAvatar">A</div>
+      <div class="sb-user-info">
+        <strong id="sbName">Admin</strong>
+        <small>Administrator</small>
+      </div>
+    </div>
+    <button class="btn btn-danger btn-full btn-sm" onclick="logout()">Sign Out</button>
+  </div>
+</aside>
+
+<div class="sidebar-overlay hidden" id="sbOverlay" onclick="closeSidebar()"></div>
+<button class="hamburger" onclick="toggleSidebar()">☰</button>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- ═══ OVERVIEW ═══ -->
+  <div id="page-overview">
+    <div class="topbar">
+      <div class="topbar-left"><h2>System Overview</h2><p id="overviewDate">Loading…</p></div>
+      <div class="topbar-right">
+        <button class="btn btn-ghost btn-sm" onclick="refreshOverview()">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div class="stat-grid" id="overviewStats">
+      <div class="card stat-card"><span class="s-icon">👥</span><div class="s-val" id="ovStudents">—</div><div class="s-lbl">Total Students</div><div class="s-trend s-up" id="ovStudentsT"></div></div>
+      <div class="card stat-card"><span class="s-icon">👨‍🏫</span><div class="s-val" id="ovTeachers">—</div><div class="s-lbl">Teachers</div></div>
+      <div class="card stat-card"><span class="s-icon">📚</span><div class="s-val" id="ovClasses">—</div><div class="s-lbl">Active Classes</div></div>
+      <div class="card stat-card"><span class="s-icon">⚡</span><div class="s-val" id="ovXP">—</div><div class="s-lbl">Total XP Distributed</div></div>
+      <div class="card stat-card"><span class="s-icon">📋</span><div class="s-val" id="ovSurveys">—</div><div class="s-lbl">Active Surveys</div></div>
+      <div class="card stat-card"><span class="s-icon">🔥</span><div class="s-val" id="ovStreaks">—</div><div class="s-lbl">Active Streaks</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <div class="card card-body">
+        <div class="sec-title mb-12">Top Students · Department</div>
+        <div id="ovTopStudents"></div>
+      </div>
+      <div class="card card-body">
+        <div class="sec-title mb-12">Program Breakdown</div>
+        <div id="ovProgBreakdown"></div>
+      </div>
+    </div>
+
+    <div class="card card-body">
+      <div class="sec-title mb-12">Recent Activity Feed</div>
+      <div id="ovActivity"></div>
+    </div>
+  </div>
+
+  <!-- ═══ ANALYTICS ═══ -->
+  <div id="page-analytics" class="hidden">
+    <div class="topbar">
+      <div class="topbar-left"><h2>Analytics</h2><p>Engagement and progress data</p></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <div class="card card-body">
+        <div class="sec-title mb-12">XP by Program</div>
+        <canvas id="chartProgram" height="220"></canvas>
+      </div>
+      <div class="card card-body">
+        <div class="sec-title mb-12">Students per Year Level</div>
+        <canvas id="chartYear" height="220"></canvas>
+      </div>
+    </div>
+    <div class="card card-body">
+      <div class="sec-title mb-12">Level Distribution</div>
+      <canvas id="chartLevel" height="140"></canvas>
+    </div>
+  </div>
+
+  <!-- ═══ USERS ═══ -->
+  <div id="page-users" class="hidden">
+    <div class="topbar">
+      <div class="topbar-left"><h2>User Management</h2><p>All students and teachers</p></div>
+      <div class="topbar-right">
+        <button class="btn btn-ghost btn-sm" onclick="openTab('tab-teachers')">+ Add Teacher</button>
+        <button class="btn btn-primary btn-sm" onclick="openTab('tab-students')">+ Add Student</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" id="tab-students" onclick="switchUserTab('students',this)">👥 Students</button>
+      <button class="tab" id="tab-teachers" onclick="switchUserTab('teachers',this)">👨‍🏫 Teachers</button>
+    </div>
+
+    <!-- Students panel -->
+    <div id="panel-students">
+      <div class="card card-body" style="margin-bottom:14px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div class="search-wrap" style="flex:1;min-width:180px"><input id="studentSearchAdmin" placeholder="Search by name or ID…" oninput="filterUsers('students')"></div>
+          <select id="filterSProg" onchange="filterUsers('students')" style="min-width:110px">
+            <option value="">All Programs</option>
+            <option>IT</option><option>CS</option><option>CoE</option><option>ECE</option>
+          </select>
+          <select id="filterSYear" onchange="filterUsers('students')" style="min-width:110px">
+            <option value="">All Years</option>
+            <option value="1">1st</option><option value="2">2nd</option>
+            <option value="3">3rd</option><option value="4">4th</option>
+          </select>
+        </div>
+      </div>
+      <div class="card" style="overflow:hidden">
+        <table class="tbl">
+          <thead><tr><th>Name</th><th>ID</th><th>Program</th><th>Year</th><th>Section</th><th>XP</th><th>Streak</th><th></th></tr></thead>
+          <tbody id="studentTable"><tr><td colspan="8"><div class="empty" style="padding:24px"><p>Loading…</p></div></td></tr></tbody>
+        </table>
+      </div>
+      <!-- Add student form -->
+      <div class="card card-body" style="margin-top:16px">
+        <div class="sec-title mb-16">Add New Student</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div><label class="lbl">Full Name</label><input id="nsName" placeholder="Juan dela Cruz"></div>
+          <div><label class="lbl">Student ID</label><input id="nsId" placeholder="2024-00001"></div>
+          <div><label class="lbl">Program</label>
+            <select id="nsProg"><option value="IT">IT</option><option value="CS">CS</option><option value="CoE">CoE</option><option value="ECE">ECE</option></select>
+          </div>
+          <div><label class="lbl">Year Level</label>
+            <select id="nsYear"><option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option></select>
+          </div>
+          <div><label class="lbl">Section</label><input id="nsSection" placeholder="IT-2A"></div>
+          <div><label class="lbl">Email (optional)</label><input id="nsEmail" placeholder="student@school.edu"></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:16px" id="addStudentBtn" onclick="addStudent()">Add Student</button>
+      </div>
+    </div>
+
+    <!-- Teachers panel -->
+    <div id="panel-teachers" class="hidden">
+      <div class="card" style="overflow:hidden;margin-bottom:16px">
+        <table class="tbl">
+          <thead><tr><th>Name</th><th>ID</th><th>Email</th><th>Classes</th><th></th></tr></thead>
+          <tbody id="teacherTable"><tr><td colspan="5"><div class="empty" style="padding:24px"><p>Loading…</p></div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="card card-body">
+        <div class="sec-title mb-16">Add New Teacher</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div><label class="lbl">Full Name</label><input id="ntName" placeholder="Prof. Maria Santos"></div>
+          <div><label class="lbl">Teacher ID</label><input id="ntId" placeholder="T-2024-001"></div>
+          <div><label class="lbl">Email (optional)</label><input id="ntEmail" placeholder="teacher@school.edu"></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:16px" id="addTeacherBtn" onclick="addTeacher()">Add Teacher</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ CLASSES ═══ -->
+  <div id="page-classes" class="hidden">
+    <div class="topbar">
+      <div class="topbar-left"><h2>Class Management</h2><p>All classes across the department</p></div>
+    </div>
+    <div class="card" style="overflow:hidden">
+      <table class="tbl">
+        <thead><tr><th>Class Name</th><th>Code</th><th>Teacher</th><th>Program</th><th>Section</th><th>Students</th><th></th></tr></thead>
+        <tbody id="classTable"><tr><td colspan="7"><div class="empty" style="padding:24px"><p>Loading…</p></div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══ VAULT COURSES ═══ -->
+  <div id="page-courses" class="hidden">
+    <div class="topbar">
+      <div class="topbar-left"><h2>The Vault · Courses</h2><p>Manage featured external courses</p></div>
+    </div>
+    <div class="card card-body" style="margin-bottom:16px">
+      <div class="sec-title mb-16">Add Course</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label class="lbl">Course Title</label><input id="cTitle" placeholder="Cybersecurity Essentials"></div>
+        <div><label class="lbl">Provider</label><input id="cProvider" placeholder="Netacad"></div>
+        <div style="grid-column:1/-1"><label class="lbl">Description</label><input id="cDesc" placeholder="Short course description…"></div>
+        <div style="grid-column:1/-1"><label class="lbl">External URL</label><input id="cUrl" type="url" placeholder="https://www.netacad.com/…"></div>
+        <div><label class="lbl">Recommended For</label>
+          <select id="cProg"><option value="">All Programs</option><option value="IT">IT</option><option value="CS">CS</option><option value="CoE">CoE</option><option value="ECE">ECE</option></select>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:10px;padding-bottom:2px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);cursor:pointer">
+            <input type="checkbox" id="cFeatured" checked style="width:16px;height:16px"> Featured on dashboard
+          </label>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:16px" id="addCourseBtn" onclick="addCourse()">Add to Vault</button>
+    </div>
+    <div id="courseList"></div>
+  </div>
+
+  <!-- ═══ ANNOUNCEMENTS ═══ -->
+  <div id="page-announce" class="hidden">
+    <div class="topbar">
+      <div class="topbar-left"><h2>Announcements</h2><p>System-wide broadcasts</p></div>
+    </div>
+    <div class="card card-body" style="margin-bottom:16px">
+      <div class="sec-title mb-16">Post System Announcement</div>
+      <label class="lbl">Title</label><input id="annTitle" placeholder="Announcement title…" style="margin-bottom:12px">
+      <label class="lbl">Message</label><textarea id="annBody" placeholder="Your message to all students…" style="margin-bottom:12px"></textarea>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);cursor:pointer;margin-bottom:16px">
+        <input type="checkbox" id="annPinned" style="width:16px;height:16px"> Pin this announcement
+      </label>
+      <button class="btn btn-primary" onclick="postAnnouncement()">📣 Broadcast to All Students</button>
+    </div>
+    <div class="card" style="overflow:hidden">
+      <div class="card-body"><div class="sec-title">Active Announcements</div></div>
+      <div id="annList"></div>
+    </div>
+  </div>
+
+  <!-- ═══ ACHIEVEMENTS ═══ -->
+  <div id="page-achievements" class="hidden">
+    <div class="topbar">
+      <div class="topbar-left"><h2>Achievement Manager</h2><p>Track badge distribution across the department</p></div>
+    </div>
+    <div id="achManagerList"></div>
+  </div>
+
+  <!-- ═══ AUDIT LOG ═══ -->
+  <div id="page-audit" class="hidden">
+    <div class="topbar">
+      <div class="topbar-left"><h2>Audit Log</h2><p>System activity history</p></div>
+      <div class="topbar-right"><button class="btn btn-ghost btn-sm" onclick="loadAudit()">↻ Refresh</button></div>
+    </div>
+    <div class="card" style="overflow:hidden">
+      <table class="tbl">
+        <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
+        <tbody id="auditTable"><tr><td colspan="4"><div class="empty" style="padding:24px"><p>Loading audit log…</p></div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<!-- EDIT STUDENT MODAL -->
+<div class="overlay" id="editStudentOverlay">
+  <div class="modal">
+    <div class="modal-hd"><h3>Edit Student</h3><button class="modal-close" onclick="closeModal('editStudentOverlay')">✕</button></div>
+    <input type="hidden" id="editStudentId">
+    <label class="lbl">Full Name</label><input id="editSName" style="margin-bottom:12px">
+    <label class="lbl">Program</label>
+    <select id="editSProg" style="margin-bottom:12px"><option value="IT">IT</option><option value="CS">CS</option><option value="CoE">CoE</option><option value="ECE">ECE</option></select>
+    <label class="lbl">Year Level</label>
+    <select id="editSYear" style="margin-bottom:12px"><option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option></select>
+    <label class="lbl">Section</label><input id="editSSection" style="margin-bottom:12px">
+    <label class="lbl">Reset Password to ID</label>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);cursor:pointer;margin-bottom:20px">
+      <input type="checkbox" id="editResetPw" style="width:16px;height:16px"> Reset password to student ID
+    </label>
+    <button class="btn btn-primary btn-full" id="editStudentBtn" onclick="saveEditStudent()">Save Changes</button>
+  </div>
+</div>
+
+<script type="module">
+import {
+  db, queryDocs, addDoc_, updateDoc_, deleteDoc_, getSession, clearSession, toast, progTag, ACHIEVEMENTS,
+  doc, updateDoc, deleteDoc, getDocs, collection, query, where, orderBy, limit, serverTimestamp
+} from "./firebase.js";
+
+const S = getSession();
+if (!S?.id || S.role !== "admin") { location.href = "index.html"; }
+
+let allStudents=[], allTeachers=[], allClasses=[];
+let chartProgram=null, chartYear=null, chartLevel=null;
+
+document.addEventListener("DOMContentLoaded", initAdmin);
+
+async function initAdmin() {
+  document.getElementById("sbAvatar").textContent = (S.name||"A")[0].toUpperCase();
+  setText("sbName", S.name||"Admin");
+  setText("overviewDate", new Date().toLocaleDateString("en-PH",{weekday:"long",year:"numeric",month:"long",day:"numeric"}));
+  await loadAllData();
+  renderOverview();
+}
+
+async function loadAllData() {
+  [allStudents, allTeachers, allClasses] = await Promise.all([
+    queryDocs("students",[],[["xp","desc"]],500),
+    queryDocs("teachers",[],[],100),
+    queryDocs("classes", [],[],200),
+  ]);
+}
+
+/* ═══ OVERVIEW ═══ */
+async function renderOverview() {
+  const totalXP = allStudents.reduce((s,st)=>s+(st.xp||0),0);
+  const activeStreaks = allStudents.filter(s=>(s.streak||0)>0).length;
+  const [surveys, classes] = await Promise.all([
+    queryDocs("surveys",[["active","==",true]],[],200),
+    queryDocs("classes",[],[],200),
+  ]);
+
+  setText("ovStudents", allStudents.length);
+  setText("ovTeachers", allTeachers.length);
+  setText("ovClasses",  allClasses.length);
+  setText("ovXP",       totalXP.toLocaleString());
+  setText("ovSurveys",  surveys.length);
+  setText("ovStreaks",  activeStreaks);
+
+  // Top students
+  const topEl = document.getElementById("ovTopStudents");
+  topEl.innerHTML = allStudents.slice(0,8).map((s,i)=>`
+    <div class="flex items-center gap-10" style="padding:8px 0;border-bottom:1px solid rgba(147,197,253,.06)">
+      <span class="font-display" style="font-size:12px;color:var(--text-3);width:22px">#${i+1}</span>
+      <div class="avatar" style="width:28px;height:28px;font-size:11px">${(s.name||"?")[0].toUpperCase()}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name||"—"}</div>
+        <div class="text-muted" style="font-size:10px">${s.section||"—"}</div>
+      </div>
+      ${progTag(s.program||"")}
+      <span class="font-display" style="font-size:12px;color:var(--blue-300)">${(s.xp||0).toLocaleString()}</span>
+    </div>`).join("");
+
+  // Program breakdown
+  const progCounts = {};
+  allStudents.forEach(s=>{ const p=s.program||"Unknown"; progCounts[p]=(progCounts[p]||0)+1; });
+  const progXP = {};
+  allStudents.forEach(s=>{ const p=s.program||"Unknown"; progXP[p]=(progXP[p]||0)+(s.xp||0); });
+  document.getElementById("ovProgBreakdown").innerHTML = Object.entries(progCounts).map(([p,count])=>{
+    const xp = progXP[p]||0;
+    const pct = Math.round((count/allStudents.length)*100)||0;
+    const colors={IT:"var(--blue-300)",CS:"var(--teal)",CoE:"var(--gold-light)",ECE:"var(--purple)"};
+    return `<div style="margin-bottom:12px">
+      <div class="flex justify-between mb-4">
+        <span style="font-size:12px;font-weight:700;color:${colors[p]||"var(--text-2)"}">${p}</span>
+        <span class="text-muted">${count} students · ${xp.toLocaleString()} XP</span>
+      </div>
+      <div style="height:6px;background:rgba(0,0,0,.35);border-radius:var(--rf);overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${colors[p]||"var(--blue)"};border-radius:var(--rf);transition:width .6s var(--ease)"></div>
+      </div>
+    </div>`;
+  }).join("");
+
+  // Activity feed
+  try {
+    const notifs = await queryDocs("notifications",[],[["createdAt","desc"]],15);
+    const icons={task:"📋",grade:"⭐",achievement:"🏅",announcement:"📣",info:"💬"};
+    document.getElementById("ovActivity").innerHTML = notifs.length
+      ? notifs.map(n=>`<div class="flex gap-10 items-center" style="padding:9px 0;border-bottom:1px solid rgba(147,197,253,.06)">
+          <span style="font-size:16px">${icons[n.type]||"💬"}</span>
+          <span style="font-size:12px;color:var(--text-2);flex:1">${n.message||"—"}</span>
+        </div>`).join("")
+      : `<div class="empty" style="padding:24px"><p>No recent activity.</p></div>`;
+  } catch {}
+}
+
+window.refreshOverview = async function() { await loadAllData(); renderOverview(); toast("Refreshed","success",1500); };
+
+/* ═══ ANALYTICS ═══ */
+async function renderAnalytics() {
+  const progXP={IT:0,CS:0,CoE:0,ECE:0};
+  const progCount={IT:0,CS:0,CoE:0,ECE:0};
+  const yearCount={1:0,2:0,3:0,4:0};
+  const lvlBuckets={1:0,2:0,3:0,4:0,5:0,"6+":0};
+
+  allStudents.forEach(s=>{
+    const p=s.program; if(progXP[p]!==undefined){progXP[p]+=(s.xp||0);progCount[p]++;}
+    const y=s.yearLevel; if(yearCount[y]!==undefined) yearCount[y]++;
+    const lvl=Math.floor((s.xp||0)/100)+1;
+    if(lvl<=5) lvlBuckets[lvl]++; else lvlBuckets["6+"]++;
+  });
+
+  const chartDefaults = { responsive:true, plugins:{legend:{labels:{color:"#94a3b8",font:{family:"Cinzel"}}}}, scales:{x:{ticks:{color:"#64748b"},grid:{color:"rgba(147,197,253,.08)"}},y:{ticks:{color:"#64748b"},grid:{color:"rgba(147,197,253,.08)"}}} };
+
+  if(chartProgram) chartProgram.destroy();
+  chartProgram = new Chart(document.getElementById("chartProgram"),{type:"bar",data:{
+    labels:["IT","CS","CoE","ECE"],
+    datasets:[{label:"Total XP",data:[progXP.IT,progXP.CS,progXP.CoE,progXP.ECE],backgroundColor:["rgba(96,165,250,.6)","rgba(20,184,166,.6)","rgba(245,158,11,.6)","rgba(168,85,247,.6)"],borderRadius:6}]
+  },options:{...chartDefaults,plugins:{legend:{display:false}}}});
+
+  if(chartYear) chartYear.destroy();
+  chartYear = new Chart(document.getElementById("chartYear"),{type:"doughnut",data:{
+    labels:["1st Year","2nd Year","3rd Year","4th Year"],
+    datasets:[{data:[yearCount[1],yearCount[2],yearCount[3],yearCount[4]],backgroundColor:["rgba(96,165,250,.7)","rgba(20,184,166,.7)","rgba(245,158,11,.7)","rgba(168,85,247,.7)"],borderWidth:0}]
+  },options:{responsive:true,plugins:{legend:{labels:{color:"#94a3b8",font:{family:"Cinzel"}}}}}});
+
+  if(chartLevel) chartLevel.destroy();
+  chartLevel = new Chart(document.getElementById("chartLevel"),{type:"bar",data:{
+    labels:["Level 1","Level 2","Level 3","Level 4","Level 5","Level 6+"],
+    datasets:[{label:"Students",data:Object.values(lvlBuckets),backgroundColor:"rgba(96,165,250,.5)",borderRadius:6}]
+  },options:{...chartDefaults,plugins:{legend:{display:false}}}});
+}
+
+/* ═══ USERS ═══ */
+function renderStudents(list) {
+  const tbody = document.getElementById("studentTable");
+  if(!list.length){tbody.innerHTML=`<tr><td colspan="8"><div class="empty" style="padding:24px"><p>No students found.</p></div></td></tr>`;return;}
+  tbody.innerHTML=list.map(s=>`<tr>
+    <td><div style="font-size:13px;font-weight:600;color:var(--text-2)">${s.name||"—"}</div></td>
+    <td><div class="text-muted">${s.id}</div></td>
+    <td>${progTag(s.program||"")}</td>
+    <td><div class="text-muted">Year ${s.yearLevel||"—"}</div></td>
+    <td><div class="text-muted">${s.section||"—"}</div></td>
+    <td><span class="font-display" style="color:var(--blue-300);font-size:13px">${(s.xp||0).toLocaleString()}</span></td>
+    <td>🔥 ${s.streak||0}</td>
+    <td>
+      <div class="flex gap-4">
+        <button class="btn btn-ghost btn-sm" onclick="editStudent('${s.id}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteStudent('${s.id}','${(s.name||"").replace(/'/g,"\\'")}')">✕</button>
+      </div>
+    </td>
+  </tr>`).join("");
+}
+
+function renderTeachers(list) {
+  const tbody = document.getElementById("teacherTable");
+  if(!list.length){tbody.innerHTML=`<tr><td colspan="5"><div class="empty" style="padding:24px"><p>No teachers found.</p></div></td></tr>`;return;}
+  tbody.innerHTML=list.map(t=>{
+    const classCount = allClasses.filter(c=>c.teacherId===t.id).length;
+    return `<tr>
+      <td><div style="font-size:13px;font-weight:600;color:var(--text-2)">${t.name||"—"}</div></td>
+      <td><div class="text-muted">${t.id}</div></td>
+      <td><div class="text-muted">${t.email||"—"}</div></td>
+      <td><span class="badge b-blue">${classCount} class${classCount!==1?"es":""}</span></td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteTeacher('${t.id}','${(t.name||"").replace(/'/g,"\\'")}')">✕</button></td>
+    </tr>`;
+  }).join("");
+}
+
+window.filterUsers = function(type) {
+  if(type==="students"){
+    const q=(document.getElementById("studentSearchAdmin").value||"").toLowerCase();
+    const p=document.getElementById("filterSProg").value;
+    const y=document.getElementById("filterSYear").value;
+    let list=allStudents.filter(s=>{
+      return (!q||(s.name||"").toLowerCase().includes(q)||(s.id||"").includes(q))
+          && (!p||s.program===p)
+          && (!y||String(s.yearLevel)===y);
+    });
+    renderStudents(list);
+  }
+};
+
+window.switchUserTab = function(tab, btn) {
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById("panel-students").classList.toggle("hidden", tab!=="students");
+  document.getElementById("panel-teachers").classList.toggle("hidden", tab!=="teachers");
+  if(tab==="students") renderStudents(allStudents);
+  else renderTeachers(allTeachers);
+};
+
+window.addStudent = async function() {
+  const name=document.getElementById("nsName").value.trim();
+  const id  =document.getElementById("nsId").value.trim();
+  if(!name||!id){toast("Name and ID are required","warn");return;}
+  const btn=document.getElementById("addStudentBtn"); btn.classList.add("btn-loading"); btn.textContent="";
+  try{
+    await fetch; // dummy — just use setDoc
+    const {setDoc:sd,doc:d}=await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+    await sd(d(db,"students",id),{
+      id, name, role:"student",
+      program:document.getElementById("nsProg").value,
+      yearLevel:parseInt(document.getElementById("nsYear").value),
+      section:document.getElementById("nsSection").value,
+      email:document.getElementById("nsEmail").value,
+      password:id, xp:0, level:1, streak:0,
+      lastLogin:null, lastClaimDate:null, achievements:[],
+      surveysAnswered:0, tasksCompleted:0
+    });
+    await addDoc_("auditLog",{action:"add-student",details:`Added student ${name} (${id})`,adminId:S.id,adminName:S.name});
+    toast(`Student ${name} added!`,"success");
+    ["nsName","nsId","nsSection","nsEmail"].forEach(f=>document.getElementById(f).value="");
+    await loadAllData(); renderStudents(allStudents);
+  }catch(e){console.error(e);toast("Error adding student","error");}
+  finally{btn.classList.remove("btn-loading"); btn.textContent="Add Student";}
+};
+
+window.addTeacher = async function() {
+  const name=document.getElementById("ntName").value.trim();
+  const id  =document.getElementById("ntId").value.trim();
+  if(!name||!id){toast("Name and ID are required","warn");return;}
+  const btn=document.getElementById("addTeacherBtn"); btn.classList.add("btn-loading"); btn.textContent="";
+  try{
+    const {setDoc:sd,doc:d}=await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+    await sd(d(db,"teachers",id),{id,name,role:"teacher",email:document.getElementById("ntEmail").value,password:id,classes:[]});
+    await addDoc_("auditLog",{action:"add-teacher",details:`Added teacher ${name} (${id})`,adminId:S.id,adminName:S.name});
+    toast(`Teacher ${name} added!`,"success");
+    ["ntName","ntId","ntEmail"].forEach(f=>document.getElementById(f).value="");
+    await loadAllData(); renderTeachers(allTeachers);
+  }catch(e){toast("Error adding teacher","error");}
+  finally{btn.classList.remove("btn-loading"); btn.textContent="Add Teacher";}
+};
+
+window.editStudent = function(id) {
+  const s=allStudents.find(s=>s.id===id); if(!s) return;
+  document.getElementById("editStudentId").value=id;
+  document.getElementById("editSName").value=s.name||"";
+  document.getElementById("editSProg").value=s.program||"IT";
+  document.getElementById("editSYear").value=s.yearLevel||1;
+  document.getElementById("editSSection").value=s.section||"";
+  document.getElementById("editResetPw").checked=false;
+  document.getElementById("editStudentOverlay").classList.add("open");
+};
+
+window.saveEditStudent = async function() {
+  const id=document.getElementById("editStudentId").value;
+  const changes={
+    name:document.getElementById("editSName").value.trim(),
+    program:document.getElementById("editSProg").value,
+    yearLevel:parseInt(document.getElementById("editSYear").value),
+    section:document.getElementById("editSSection").value.trim(),
+  };
+  if(document.getElementById("editResetPw").checked) changes.password=id;
+  const btn=document.getElementById("editStudentBtn"); btn.classList.add("btn-loading"); btn.textContent="";
+  try{
+    await updateDoc(doc(db,"students",id),changes);
+    await addDoc_("auditLog",{action:"edit-student",details:`Edited student ${changes.name} (${id})`,adminId:S.id,adminName:S.name});
+    toast("Student updated!","success"); closeModal("editStudentOverlay");
+    await loadAllData(); renderStudents(allStudents);
+  }catch{toast("Error saving","error");}
+  finally{btn.classList.remove("btn-loading"); btn.textContent="Save Changes";}
+};
+
+window.deleteStudent = async function(id,name) {
+  if(!confirm(`Remove student ${name} (${id})? This cannot be undone.`)) return;
+  try{
+    await deleteDoc(doc(db,"students",id));
+    await addDoc_("auditLog",{action:"delete-student",details:`Removed student ${name} (${id})`,adminId:S.id,adminName:S.name});
+    toast(`${name} removed`,"success");
+    await loadAllData(); renderStudents(allStudents);
+  }catch{toast("Error deleting student","error");}
+};
+
+window.deleteTeacher = async function(id,name) {
+  if(!confirm(`Remove teacher ${name}?`)) return;
+  try{
+    await deleteDoc(doc(db,"teachers",id));
+    toast(`${name} removed`,"success");
+    await loadAllData(); renderTeachers(allTeachers);
+  }catch{toast("Error","error");}
+};
+
+/* ═══ CLASSES ═══ */
+function renderClassTable() {
+  const tbody=document.getElementById("classTable");
+  if(!allClasses.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty" style="padding:24px"><p>No classes yet.</p></div></td></tr>`;return;}
+  tbody.innerHTML=allClasses.map(c=>`<tr>
+    <td><div style="font-size:13px;font-weight:600;color:var(--text-2)">${c.name||"—"}</div></td>
+    <td><div class="text-muted">${c.code||"—"}</div></td>
+    <td><div class="text-muted">${c.teacherName||"—"}</div></td>
+    <td>${progTag(c.program||"")}</td>
+    <td><div class="text-muted">${c.section||"—"}</div></td>
+    <td><span class="badge b-blue">${(c.students||[]).length}</span></td>
+    <td><button class="btn btn-danger btn-sm" onclick="deleteClass('${c.id}')">✕</button></td>
+  </tr>`).join("");
+}
+
+window.deleteClass=async function(id){
+  if(!confirm("Delete this class?")) return;
+  try{await deleteDoc(doc(db,"classes",id));toast("Class removed","success");await loadAllData();renderClassTable();}
+  catch{toast("Error","error");}
+};
+
+/* ═══ VAULT COURSES ═══ */
+async function loadCourses() {
+  const courses=await queryDocs("courses",[],[],100);
+  const el=document.getElementById("courseList");
+  if(!courses.length){el.innerHTML=`<div class="empty"><div class="ei">⚗️</div><p>No courses in the Vault yet.</p></div>`;return;}
+  el.innerHTML=courses.map(c=>`
+    <div class="card card-body flex gap-14" style="margin-bottom:10px;align-items:flex-start">
+      <div class="vault-icon">${c.featured?"📖":"📄"}</div>
+      <div style="flex:1;min-width:0">
+        <div class="font-display" style="font-size:13px;color:var(--blue-200)">${c.title||"Course"}</div>
+        <div class="text-muted mt-4">${c.provider||"—"} ${c.featured?'<span class="badge b-gold" style="margin-left:6px">Featured</span>':""}</div>
+        <div class="text-muted" style="font-size:11px;margin-top:2px">${c.description||""}</div>
+        <a href="${c.url||"#"}" target="_blank" class="btn btn-ghost btn-sm" style="margin-top:8px;width:auto">Open →</a>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="deleteCourse('${c.id}')">✕</button>
+    </div>`).join("");
+}
+
+window.addCourse=async function(){
+  const title=document.getElementById("cTitle").value.trim();
+  const url  =document.getElementById("cUrl").value.trim();
+  if(!title||!url){toast("Title and URL are required","warn");return;}
+  const btn=document.getElementById("addCourseBtn"); btn.classList.add("btn-loading"); btn.textContent="";
+  try{
+    await addDoc_("courses",{
+      title, provider:document.getElementById("cProvider").value,
+      description:document.getElementById("cDesc").value,
+      url, program:document.getElementById("cProg").value||null,
+      featured:document.getElementById("cFeatured").checked,
+    });
+    toast("Course added to Vault!","gold"); ["cTitle","cProvider","cDesc","cUrl"].forEach(f=>document.getElementById(f).value="");
+    loadCourses();
+  }catch{toast("Error","error");}
+  finally{btn.classList.remove("btn-loading"); btn.textContent="Add to Vault";}
+};
+
+window.deleteCourse=async function(id){
+  if(!confirm("Remove this course?")) return;
+  try{await deleteDoc(doc(db,"courses",id));toast("Removed","success");loadCourses();}
+  catch{toast("Error","error");}
+};
+
+/* ═══ ANNOUNCEMENTS ═══ */
+async function loadAdminAnns() {
+  const anns=await queryDocs("announcements",[["authorRole","==","admin"]],[["createdAt","desc"]],20);
+  const el=document.getElementById("annList");
+  el.innerHTML=!anns.length?`<div class="empty" style="padding:24px"><p>No announcements yet.</p></div>`
+    :anns.map(a=>`<div style="padding:14px;border-bottom:1px solid var(--border)">
+        <div class="flex items-center justify-between mb-8">
+          <div class="font-display" style="font-size:13px;color:var(--blue-200)">${a.title||"—"} ${a.pinned?'📌':''}</div>
+          <button class="btn btn-danger btn-sm" onclick="deleteAnn('${a.id}')">Delete</button>
+        </div>
+        <p style="font-size:13px;color:var(--text-2)">${a.body||""}</p>
+      </div>`).join("");
+}
+
+window.postAnnouncement=async function(){
+  const title=document.getElementById("annTitle").value.trim();
+  const body =document.getElementById("annBody").value.trim();
+  if(!title||!body){toast("Fill in title and message","warn");return;}
+  try{
+    await addDoc_("announcements",{title,body,authorId:S.id,authorRole:"admin",authorName:S.name,classId:null,pinned:document.getElementById("annPinned").checked});
+    await addDoc_("auditLog",{action:"announcement",details:`Posted: ${title}`,adminId:S.id,adminName:S.name});
+    toast("Announcement broadcast!","success");
+    document.getElementById("annTitle").value=""; document.getElementById("annBody").value="";
+    loadAdminAnns();
+  }catch{toast("Error","error");}
+};
+
+window.deleteAnn=async function(id){
+  if(!confirm("Delete?")) return;
+  try{await deleteDoc(doc(db,"announcements",id));toast("Deleted","success");loadAdminAnns();}
+  catch{toast("Error","error");}
+};
+
+/* ═══ ACHIEVEMENTS ═══ */
+function renderAchManager() {
+  const el=document.getElementById("achManagerList");
+  const achEntries=Object.entries(ACHIEVEMENTS);
+  el.innerHTML=achEntries.map(([id,a])=>{
+    const earnedCount=allStudents.filter(s=>(s.achievements||[]).includes(id)).length;
+    const pct=allStudents.length>0?Math.round((earnedCount/allStudents.length)*100):0;
+    return `<div class="card card-body" style="margin-bottom:10px">
+      <div class="flex items-center gap-12 mb-10">
+        <span style="font-size:28px">${a.icon}</span>
+        <div style="flex:1">
+          <div class="font-display" style="font-size:13px;color:var(--blue-200)">${a.title}</div>
+          <div class="text-muted">${a.desc} · <span class="ach-rarity rarity-${a.rarity}">${a.rarity}</span></div>
+        </div>
+        <div class="text-center">
+          <div class="font-display" style="font-size:20px;color:var(--blue-300)">${earnedCount}</div>
+          <div class="text-muted" style="font-size:10px">students</div>
+        </div>
+      </div>
+      <div style="height:5px;background:rgba(0,0,0,.35);border-radius:var(--rf);overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:var(--blue);border-radius:var(--rf);transition:width .6s var(--ease)"></div>
+      </div>
+      <div class="text-muted" style="font-size:10px;margin-top:4px;text-align:right">${pct}% of students</div>
+    </div>`;
+  }).join("");
+}
+
+/* ═══ AUDIT LOG ═══ */
+window.loadAudit = async function() {
+  const logs=await queryDocs("auditLog",[],[["createdAt","desc"]],100);
+  const tbody=document.getElementById("auditTable");
+  if(!logs.length){tbody.innerHTML=`<tr><td colspan="4"><div class="empty" style="padding:24px"><p>No audit records yet.</p></div></td></tr>`;return;}
+  tbody.innerHTML=logs.map(l=>{
+    const ts=l.createdAt?.seconds?new Date(l.createdAt.seconds*1000):new Date();
+    const actionColors={"add-student":"b-green","add-teacher":"b-blue","delete-student":"b-red","delete-teacher":"b-red","edit-student":"b-gold","announcement":"b-purple"};
+    return `<tr>
+      <td><div class="text-muted" style="font-size:12px">${ts.toLocaleString()}</div></td>
+      <td><div style="font-size:13px;color:var(--text-2)">${l.adminName||"—"}</div></td>
+      <td><span class="badge ${actionColors[l.action]||"b-blue"}">${l.action||"—"}</span></td>
+      <td><div style="font-size:12px;color:var(--text-2)">${l.details||"—"}</div></td>
+    </tr>`;
+  }).join("");
+};
+
+/* ═══ PAGE NAV ═══ */
+const PAGE_ACTIONS = {
+  overview:     ()=>{ renderOverview(); },
+  analytics:    ()=>{ renderAnalytics(); },
+  users:        ()=>{ renderStudents(allStudents); renderTeachers(allTeachers); },
+  classes:      ()=>{ renderClassTable(); },
+  courses:      ()=>{ loadCourses(); },
+  announce:     ()=>{ loadAdminAnns(); },
+  achievements: ()=>{ renderAchManager(); },
+  audit:        ()=>{ window.loadAudit(); },
+};
+
+window.showPage = function(id, el) {
+  document.querySelectorAll("[id^='page-']").forEach(p=>p.classList.add("hidden"));
+  document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
+  const page=document.getElementById("page-"+id);
+  if(page) page.classList.remove("hidden");
+  if(el) el.classList.add("active");
+  if(PAGE_ACTIONS[id]) PAGE_ACTIONS[id]();
+  if(window.innerWidth<768) closeSidebar();
+};
+
+window.openTab=function(tabId){ document.getElementById(tabId)?.click(); };
+window.toggleSidebar=()=>{ document.getElementById("sidebar").classList.toggle("open"); document.getElementById("sbOverlay").classList.toggle("hidden"); };
+window.closeSidebar=()=>{ document.getElementById("sidebar").classList.remove("open"); document.getElementById("sbOverlay").classList.add("hidden"); };
+window.closeModal=id=>document.getElementById(id).classList.remove("open");
+document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{ if(e.target===o) o.classList.remove("open"); }));
+window.logout=function(){ clearSession(); location.href="index.html"; };
+
+function setText(id,v){const e=document.getElementById(id);if(e)e.textContent=v}
+</script>
+</body></html>

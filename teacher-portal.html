@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teacher Portal · Vermeil Quest</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="toastBox" style="position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;width:min(400px,92vw)"></div>
+
+<div class="portal-wrap">
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sb-logo">
+    <h1>Vermeil Quest</h1><p class="subtitle">Teacher Portal</p>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section">Main</div>
+    <a class="nav-item active" onclick="showPage('overview')"><span class="ni">📊</span>Overview</a>
+    <a class="nav-item" onclick="showPage('classes')"><span class="ni">📚</span>My Classes</a>
+    <a class="nav-item" onclick="showPage('students')"><span class="ni">👥</span>Students</a>
+    <div class="sb-section">Content</div>
+    <a class="nav-item" onclick="showPage('tasks')"><span class="ni">📋</span>Assign Tasks</a>
+    <a class="nav-item" onclick="showPage('grading')"><span class="ni">⭐</span>Grading <span class="nav-badge" id="gradeBadge">0</span></a>
+    <a class="nav-item" onclick="showPage('announce')"><span class="ni">📣</span>Announcements</a>
+    <div class="sb-section">Account</div>
+    <a class="nav-item" onclick="goSettings()"><span class="ni">⚙️</span>Settings</a>
+  </nav>
+  <div class="sb-foot">
+    <div class="sb-user">
+      <div class="avatar" id="sbAvatar">T</div>
+      <div class="sb-user-info">
+        <strong id="sbName">Teacher</strong>
+        <small id="sbId">—</small>
+      </div>
+    </div>
+    <button class="btn btn-danger btn-full btn-sm" onclick="logout()">Sign Out</button>
+  </div>
+</aside>
+
+<!-- Overlay + hamburger -->
+<div class="sidebar-overlay hidden" id="sbOverlay" onclick="closeSidebar()"></div>
+<button class="hamburger" onclick="toggleSidebar()">☰</button>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- OVERVIEW -->
+  <div id="page-overview">
+    <div class="topbar">
+      <div class="topbar-left"><h2>Overview</h2><p id="greetMsg">Welcome back!</p></div>
+    </div>
+    <div class="stat-grid" id="teacherStats">
+      <div class="card stat-card"><span class="s-icon">📚</span><div class="s-val" id="stClasses">0</div><div class="s-lbl">My Classes</div></div>
+      <div class="card stat-card"><span class="s-icon">👥</span><div class="s-val" id="stStudents">0</div><div class="s-lbl">Total Students</div></div>
+      <div class="card stat-card"><span class="s-icon">📋</span><div class="s-val" id="stTasks">0</div><div class="s-lbl">Active Tasks</div></div>
+      <div class="card stat-card"><span class="s-icon">⭐</span><div class="s-val" id="stPending">0</div><div class="s-lbl">Ungraded</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <div class="card card-body">
+        <div class="sec-title mb-12">Recent Submissions</div>
+        <div id="recentSubs"><div class="empty" style="padding:16px"><p>No submissions yet.</p></div></div>
+      </div>
+      <div class="card card-body">
+        <div class="sec-title mb-12">Top Students</div>
+        <div id="topStudents"><div class="empty" style="padding:16px"><p>No class data yet.</p></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLASSES -->
+  <div id="page-classes" class="hidden">
+    <div class="topbar">
+      <div class="topbar-left"><h2>My Classes</h2><p>Manage your enrolled classes</p></div>
+      <div class="topbar-right"><button class="btn btn-primary" onclick="openCreateClass()">+ New Class</button></div>
+    </div>
+    <div class="class-grid" id="teacherClassGrid"></div>
+  </div>
+
+  <!-- STUDENTS -->
+  <div id="page-students" class="hidden">
+    <div class="topbar">
+      <div class="topbar-left"><h2>Students</h2><p>Add students to your classes</p></div>
+    </div>
+    <div class="card card-body" style="margin-bottom:16px">
+      <div class="sec-title mb-12">Search & Add Student</div>
+      <div class="input-row">
+        <div class="search-wrap" style="flex:1"><input id="studentSearch" placeholder="Search by name or student ID…" oninput="searchStudents()"></div>
+        <select id="classForAdd" style="max-width:200px">
+          <option value="">Select class…</option>
+        </select>
+      </div>
+      <div id="searchResults" style="margin-top:12px"></div>
+    </div>
+    <div class="card card-body">
+      <div class="sec-title mb-12">Students in My Classes</div>
+      <div id="studentRoster"></div>
+    </div>
+  </div>
+
+  <!-- TASKS -->
+  <div id="page-tasks" class="hidden">
+    <div class="topbar">
+      <div class="topbar-left"><h2>Assign Tasks</h2><p>Create and manage assignments</p></div>
+      <div class="topbar-right"><button class="btn btn-primary" onclick="openCreateTask()">+ Create Task</button></div>
+    </div>
+    <div class="card" style="overflow:hidden">
+      <table class="tbl">
+        <thead><tr><th>Title</th><th>Class</th><th>Type</th><th>Due</th><th>XP</th><th>Submissions</th><th></th></tr></thead>
+        <tbody id="taskTable"><tr><td colspan="7"><div class="empty" style="padding:24px"><p>No tasks yet.</p></div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- GRADING -->
+  <div id="page-grading" class="hidden">
+    <div class="topbar">
+      <div class="topbar-left"><h2>Grading</h2><p>Review and grade student submissions</p></div>
+    </div>
+    <div id="gradingList"><div class="empty"><div class="ei">⭐</div><p>No pending submissions to grade.</p></div></div>
+  </div>
+
+  <!-- ANNOUNCE -->
+  <div id="page-announce" class="hidden">
+    <div class="topbar">
+      <div class="topbar-left"><h2>Announcements</h2><p>Post updates to your students</p></div>
+    </div>
+    <div class="card card-body" style="margin-bottom:16px">
+      <div class="sec-title mb-12">Post Announcement</div>
+      <label class="lbl">Target Class</label>
+      <select id="announceClass" style="margin-bottom:12px"><option value="">All My Students</option></select>
+      <label class="lbl">Title</label>
+      <input id="annTitle" placeholder="Announcement title…" style="margin-bottom:12px">
+      <label class="lbl">Message</label>
+      <textarea id="annBody" placeholder="Your message…" style="margin-bottom:16px"></textarea>
+      <button class="btn btn-primary" onclick="postAnnouncement()">📣 Post Announcement</button>
+    </div>
+    <div class="card" style="overflow:hidden">
+      <div class="card-body"><div class="sec-title">Posted Announcements</div></div>
+      <div id="annList"></div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<!-- CREATE CLASS MODAL -->
+<div class="overlay" id="createClassOverlay">
+  <div class="modal">
+    <div class="modal-hd"><h3>Create Class</h3><button class="modal-close" onclick="closeModal('createClassOverlay')">✕</button></div>
+    <label class="lbl">Class Name</label><input id="ccName" placeholder="e.g. Web Development" style="margin-bottom:12px">
+    <label class="lbl">Class Code</label><input id="ccCode" placeholder="e.g. IT-WD-2A" style="margin-bottom:12px">
+    <label class="lbl">Program</label>
+    <select id="ccProg" style="margin-bottom:12px"><option value="IT">IT</option><option value="CS">CS</option><option value="CoE">CoE</option><option value="ECE">ECE</option></select>
+    <label class="lbl">Year Level</label>
+    <select id="ccYear" style="margin-bottom:12px"><option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option></select>
+    <label class="lbl">Section</label><input id="ccSection" placeholder="e.g. IT-2A" style="margin-bottom:20px">
+    <button class="btn btn-primary btn-full" id="ccBtn" onclick="createClass()">Create Class</button>
+  </div>
+</div>
+
+<!-- CREATE TASK MODAL -->
+<div class="overlay" id="createTaskOverlay">
+  <div class="modal">
+    <div class="modal-hd"><h3>Create Task</h3><button class="modal-close" onclick="closeModal('createTaskOverlay')">✕</button></div>
+    <label class="lbl">Class</label>
+    <select id="ctClass" style="margin-bottom:12px"><option value="">Select class…</option></select>
+    <label class="lbl">Task Type</label>
+    <select id="ctType" style="margin-bottom:12px"><option value="task">📋 Task / Assignment</option><option value="quiz">❓ Quiz</option><option value="lecture">📖 Reading Material</option></select>
+    <label class="lbl">Title</label><input id="ctTitle" placeholder="Task title…" style="margin-bottom:12px">
+    <label class="lbl">Description / Instructions</label><textarea id="ctDesc" placeholder="Describe the task…" style="margin-bottom:12px"></textarea>
+    <label class="lbl">Resource Link (optional)</label><input id="ctLink" placeholder="https://…" style="margin-bottom:12px">
+    <div class="input-row" style="margin-bottom:20px">
+      <div><label class="lbl">Max XP</label><input id="ctXP" type="number" value="50" min="1" max="500"></div>
+      <div><label class="lbl">Due Date</label><input id="ctDue" type="date"></div>
+    </div>
+    <button class="btn btn-primary btn-full" id="ctBtn" onclick="createTask()">Assign Task</button>
+  </div>
+</div>
+
+<!-- GRADE MODAL -->
+<div class="overlay" id="gradeOverlay">
+  <div class="modal">
+    <div class="modal-hd"><h3>Grade Submission</h3><button class="modal-close" onclick="closeModal('gradeOverlay')">✕</button></div>
+    <div id="gradeDetail" style="margin-bottom:16px"></div>
+    <label class="lbl">XP to Award (0 – <span id="gradeMaxXP">50</span>)</label>
+    <input id="gradeXP" type="number" min="0" max="500" value="50" style="margin-bottom:16px">
+    <button class="btn btn-primary btn-full" id="gradeBtn" onclick="submitGrade()">Award XP & Grade</button>
+  </div>
+</div>
+
+<script type="module">
+import { db, queryDocs, addDoc_, updateDoc_, getDoc_, getSession, saveSession, clearSession, toast, progTag,
+  doc, updateDoc, arrayUnion, increment, serverTimestamp, getDocs, collection, query, where, orderBy, limit } from "./firebase.js";
+
+const S=getSession(); if(!S?.id||S.role!=="teacher") location.href="index.html";
+
+let myClasses=[], allStudentsInClasses=[];
+let currentSub=null;
+
+/* ── INIT ── */
+document.addEventListener("DOMContentLoaded", initPortal);
+async function initPortal(){
+  setText("sbName", S.name||"Teacher");
+  setText("sbId",   S.id);
+  document.getElementById("sbAvatar").textContent=(S.name||"T")[0].toUpperCase();
+  setText("greetMsg",`Welcome back, ${S.name?.split(" ")[0]||"Teacher"}!`);
+  myClasses=await queryDocs("classes",[["teacherId","==",S.id]],[],50);
+  await Promise.all([loadOverview(), loadClassDropdowns(), loadStudentRoster(), loadTasks(), loadGrading(), loadAnnouncements()]);
+}
+
+async function loadOverview(){
+  setText("stClasses", myClasses.length);
+  let totalStudents=0, totalTasks=0;
+  myClasses.forEach(c=>totalStudents+=(c.students||[]).length);
+  const tasks=await queryDocs("tasks",[["teacherId","==",S.id]],[],200);
+  totalTasks=tasks.length;
+  const subs=await queryDocs("submissions",[["graded","==",false]],[],200);
+  const myTaskIds=tasks.map(t=>t.id);
+  const pending=subs.filter(s=>myTaskIds.includes(s.taskId));
+  setText("stStudents",totalStudents);
+  setText("stTasks",totalTasks);
+  setText("stPending",pending.length);
+  setText("gradeBadge",pending.length);
+
+  const recent=subs.slice(0,5);
+  const rsEl=document.getElementById("recentSubs");
+  rsEl.innerHTML=!recent.length?`<div class="empty" style="padding:16px"><p>No submissions yet.</p></div>`
+    :recent.map(s=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(147,197,253,.07)">
+        <span style="font-size:13px;color:var(--text-2)">${s.studentName||"Unknown"}</span>
+        <button class="btn btn-primary btn-sm" onclick="openGrade('${s.id}')">Grade</button>
+      </div>`).join("");
+
+  // top students
+  let allS=[];
+  for(const c of myClasses){
+    for(const sid of (c.students||[])){
+      const sd=await getDoc_("students",sid);
+      if(sd) allS.push(sd);
+    }
+  }
+  allStudentsInClasses=[...new Map(allS.map(s=>[s.id,s])).values()];
+  allS.sort((a,b)=>(b.xp||0)-(a.xp||0));
+  const tsEl=document.getElementById("topStudents");
+  tsEl.innerHTML=!allS.length?`<div class="empty" style="padding:16px"><p>No students yet.</p></div>`
+    :allS.slice(0,5).map((s,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(147,197,253,.07)">
+        <span style="font-family:var(--display);font-size:13px;color:var(--text-3);width:20px">#${i+1}</span>
+        <span style="flex:1;font-size:13px;color:var(--text-2)">${s.name||"—"}</span>
+        <span style="font-family:var(--display);font-size:13px;color:var(--blue-300)">${s.xp||0} XP</span>
+      </div>`).join("");
+}
+
+function loadClassDropdowns(){
+  const sels=["classForAdd","ctClass","announceClass"];
+  sels.forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    while(el.options.length>1) el.remove(1);
+    myClasses.forEach(c=>{
+      const o=document.createElement("option"); o.value=c.id; o.textContent=c.name||c.id;
+      el.appendChild(o);
+    });
+  });
+  const cgEl=document.getElementById("teacherClassGrid");
+  if(!myClasses.length){cgEl.innerHTML=`<div class="empty"><div class="ei">📚</div><p>No classes yet. Create your first class!</p></div>`;return;}
+  cgEl.innerHTML=myClasses.map(c=>`
+    <div class="class-card" onclick="viewClass('${c.id}')">
+      <div class="class-icon">📘</div>
+      <div class="class-name">${c.name||"Class"}</div>
+      <div class="class-teacher">${progTag(c.program||"")} · ${c.section||"—"}</div>
+      <div class="text-muted mt-4">${(c.students||[]).length} students</div>
+    </div>`).join("");
+}
+
+async function loadStudentRoster(){
+  const el=document.getElementById("studentRoster");
+  if(!allStudentsInClasses.length) return;
+  el.innerHTML=`<table class="tbl"><thead><tr><th>Name</th><th>ID</th><th>Program</th><th>XP</th><th>Streak</th></tr></thead>
+    <tbody>${allStudentsInClasses.map(s=>`<tr>
+      <td><div style="font-size:13px;color:var(--text-2)">${s.name||"—"}</div></td>
+      <td><div class="text-muted">${s.id}</div></td>
+      <td>${progTag(s.program||"")}</td>
+      <td><span style="font-family:var(--display);color:var(--blue-300)">${s.xp||0}</span></td>
+      <td>🔥 ${s.streak||0}</td>
+    </tr>`).join("")}</tbody></table>`;
+}
+
+async function loadTasks(){
+  const tasks=await queryDocs("tasks",[["teacherId","==",S.id]],[["createdAt","desc"]],100);
+  const tbody=document.getElementById("taskTable");
+  if(!tasks.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty" style="padding:24px"><p>No tasks assigned yet.</p></div></td></tr>`;return;}
+  const classMap=Object.fromEntries(myClasses.map(c=>[c.id,c.name||c.id]));
+  tbody.innerHTML=tasks.map(t=>{
+    const due=t.dueDate?.seconds?new Date(t.dueDate.seconds*1000):new Date(t.dueDate||Date.now());
+    const icons={task:"📋",quiz:"❓",lecture:"📖"};
+    return `<tr>
+      <td><div style="font-size:13px;color:var(--text-2);font-weight:600">${t.title||"—"}</div></td>
+      <td><div class="text-muted">${classMap[t.classId]||"—"}</div></td>
+      <td>${icons[t.type]||"📋"} ${t.type||"—"}</td>
+      <td>${due.toLocaleDateString()}</td>
+      <td><span style="color:var(--blue-300);font-family:var(--display)">+${t.maxXP||0}</span></td>
+      <td>${(t.submittedBy||[]).length}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteTask('${t.id}')">Delete</button></td>
+    </tr>`;
+  }).join("");
+}
+
+async function loadGrading(){
+  const allTasks=await queryDocs("tasks",[["teacherId","==",S.id]],[],200);
+  const myIds=allTasks.map(t=>t.id);
+  const subs=await queryDocs("submissions",[["graded","==",false]],[["submittedAt","desc"]],100);
+  const pending=subs.filter(s=>myIds.includes(s.taskId));
+  const maxMap=Object.fromEntries(allTasks.map(t=>[t.id,t.maxXP||50]));
+  const el=document.getElementById("gradingList");
+  if(!pending.length){el.innerHTML=`<div class="empty"><div class="ei">⭐</div><p>All caught up! No pending submissions.</p></div>`;return;}
+  el.innerHTML=pending.map(s=>`
+    <div class="card card-body" style="margin-bottom:10px;display:flex;gap:14px;align-items:flex-start">
+      <div style="flex:1;min-width:0">
+        <div class="font-display" style="font-size:13px;color:var(--blue-200)">${s.studentName||"—"}</div>
+        <div class="text-muted mt-4">Task ID: ${s.taskId} · Max XP: ${maxMap[s.taskId]||50}</div>
+        <div style="margin-top:8px;font-size:13px;color:var(--text-2);background:rgba(0,0,0,.25);padding:10px;border-radius:var(--r1);white-space:pre-wrap;word-break:break-word">${s.content||"No content"}</div>
+      </div>
+      <button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="openGrade('${s.id}','${maxMap[s.taskId]||50}')">Grade</button>
+    </div>`).join("");
+}
+
+async function loadAnnouncements(){
+  const anns=await queryDocs("announcements",[["authorId","==",S.id]],[["createdAt","desc"]],20);
+  const el=document.getElementById("annList");
+  if(!anns.length){el.innerHTML=`<div class="empty" style="padding:24px"><p>No announcements posted yet.</p></div>`;return;}
+  el.innerHTML=anns.map(a=>`
+    <div style="padding:14px;border-bottom:1px solid var(--border)">
+      <div class="flex items-center justify-between mb-8">
+        <div class="font-display" style="font-size:13px;color:var(--blue-200)">${a.title||"—"}</div>
+        <button class="btn btn-danger btn-sm" onclick="deleteAnn('${a.id}')">Delete</button>
+      </div>
+      <p style="font-size:13px;color:var(--text-2)">${a.body||""}</p>
+    </div>`).join("");
+}
+
+/* ── SEARCH STUDENTS ── */
+window.searchStudents=async function(){
+  const q=document.getElementById("studentSearch").value.trim().toLowerCase();
+  const el=document.getElementById("searchResults");
+  if(q.length<2){el.innerHTML="";return;}
+  const all=await queryDocs("students",[],[ ],200);
+  const results=all.filter(s=>(s.name||"").toLowerCase().includes(q)||(s.id||"").includes(q)).slice(0,8);
+  if(!results.length){el.innerHTML=`<div class="text-muted" style="padding:8px">No students found.</div>`;return;}
+  el.innerHTML=results.map(s=>`
+    <div class="flex items-center gap-10" style="padding:10px;border-bottom:1px solid rgba(147,197,253,.07)">
+      <div class="avatar" style="width:32px;height:32px;font-size:12px">${(s.name||"?")[0].toUpperCase()}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;color:var(--text-2);font-weight:600">${s.name||"—"}</div>
+        <div class="text-muted">${s.id} · ${s.program||"—"} · ${s.section||"—"}</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="addStudentToClass('${s.id}','${s.name||""}')">Add</button>
+    </div>`).join("");
+};
+
+window.addStudentToClass=async function(sid,sname){
+  const classId=document.getElementById("classForAdd").value;
+  if(!classId){toast("Select a class first","warn");return;}
+  try{
+    await updateDoc(doc(db,"classes",classId),{students:arrayUnion(sid)});
+    await updateDoc(doc(db,"students",sid),{classes:arrayUnion(classId)});
+    toast(`${sname} added to class!`,"success");
+    document.getElementById("searchResults").innerHTML="";
+    document.getElementById("studentSearch").value="";
+    myClasses=await queryDocs("classes",[["teacherId","==",S.id]],[],50);
+    loadStudentRoster();
+  }catch{toast("Error adding student","error");}
+};
+
+/* ── CREATE CLASS ── */
+window.openCreateClass=()=>document.getElementById("createClassOverlay").classList.add("open");
+window.createClass=async function(){
+  const name=document.getElementById("ccName").value.trim();
+  const code=document.getElementById("ccCode").value.trim();
+  if(!name){toast("Enter class name","warn");return;}
+  const btn=document.getElementById("ccBtn"); btn.classList.add("btn-loading"); btn.textContent="";
+  try{
+    await addDoc_("classes",{name,code,teacherId:S.id,teacherName:S.name,
+      program:document.getElementById("ccProg").value,
+      yearLevel:parseInt(document.getElementById("ccYear").value),
+      section:document.getElementById("ccSection").value,
+      students:[],tasks:[]});
+    toast("Class created!","success"); closeModal("createClassOverlay");
+    myClasses=await queryDocs("classes",[["teacherId","==",S.id]],[],50);
+    loadClassDropdowns();
+  }catch{toast("Error creating class","error");}
+  finally{btn.classList.remove("btn-loading"); btn.textContent="Create Class";}
+};
+
+/* ── CREATE TASK ── */
+window.openCreateTask=()=>document.getElementById("createTaskOverlay").classList.add("open");
+window.createTask=async function(){
+  const classId=document.getElementById("ctClass").value;
+  const title  =document.getElementById("ctTitle").value.trim();
+  if(!classId){toast("Select a class","warn");return;}
+  if(!title)  {toast("Enter a title","warn");return;}
+  const cls=myClasses.find(c=>c.id===classId);
+  const dueRaw=document.getElementById("ctDue").value;
+  const btn=document.getElementById("ctBtn"); btn.classList.add("btn-loading"); btn.textContent="";
+  try{
+    const students=cls?.students||[];
+    const taskId=await addDoc_("tasks",{
+      title,type:document.getElementById("ctType").value,
+      description:document.getElementById("ctDesc").value,
+      link:document.getElementById("ctLink").value,
+      classId,teacherId:S.id,teacherName:S.name,
+      maxXP:parseInt(document.getElementById("ctXP").value)||50,
+      dueDate:dueRaw?new Date(dueRaw):null,
+      assignedTo:students,submittedBy:[]
+    });
+    // notify students
+    for(const sid of students){
+      await addDoc_("notifications",{userId:sid,message:`New task: ${title}`,type:"task",link:`quest-detail.html?id=${taskId}`,read:false});
+    }
+    toast("Task assigned!","success"); closeModal("createTaskOverlay");
+    loadTasks(); loadOverview();
+  }catch(e){console.error(e);toast("Error creating task","error");}
+  finally{btn.classList.remove("btn-loading"); btn.textContent="Assign Task";}
+};
+
+window.deleteTask=async function(id){
+  if(!confirm("Delete this task?")) return;
+  try{await updateDoc_(db,"tasks",id,{active:false});toast("Task removed","success");loadTasks();}
+  catch{toast("Error","error");}
+};
+
+/* ── GRADING ── */
+window.openGrade=async function(subId, maxXP=50){
+  const sub=await getDoc_("submissions",subId);
+  currentSub=sub;
+  document.getElementById("gradeMaxXP").textContent=maxXP;
+  document.getElementById("gradeXP").max=maxXP; document.getElementById("gradeXP").value=maxXP;
+  document.getElementById("gradeDetail").innerHTML=`
+    <div class="font-display" style="margin-bottom:4px">${sub?.studentName||"Student"}</div>
+    <div class="text-muted mb-12">Submission:</div>
+    <div style="background:rgba(0,0,0,.25);padding:12px;border-radius:var(--r1);font-size:13px;color:var(--text-2);white-space:pre-wrap;word-break:break-word">${sub?.content||"—"}</div>`;
+  document.getElementById("gradeOverlay").classList.add("open");
+};
+
+window.submitGrade=async function(){
+  if(!currentSub) return;
+  const xp=parseInt(document.getElementById("gradeXP").value)||0;
+  const btn=document.getElementById("gradeBtn"); btn.classList.add("btn-loading"); btn.textContent="";
+  try{
+    await updateDoc(doc(db,"submissions",currentSub.id),{xpAwarded:xp,graded:true,gradedAt:serverTimestamp()});
+    await updateDoc(doc(db,"students",currentSub.studentId),{xp:increment(xp),tasksCompleted:increment(1)});
+    await addDoc_("notifications",{userId:currentSub.studentId,message:`Your submission was graded: +${xp} XP`,type:"grade",read:false});
+    await addDoc_(`students/${currentSub.studentId}/xpLog`,{amount:xp,reason:"task-submit"});
+    toast(`Graded! +${xp} XP awarded to student.`,"success");
+    closeModal("gradeOverlay");
+    loadGrading(); loadOverview();
+  }catch{toast("Error grading submission","error");}
+  finally{btn.classList.remove("btn-loading"); btn.textContent="Award XP & Grade";}
+};
+
+/* ── ANNOUNCE ── */
+window.postAnnouncement=async function(){
+  const title=document.getElementById("annTitle").value.trim();
+  const body =document.getElementById("annBody").value.trim();
+  if(!title||!body){toast("Fill in title and message","warn");return;}
+  const classId=document.getElementById("announceClass").value||null;
+  try{
+    await addDoc_("announcements",{title,body,authorId:S.id,authorRole:"teacher",authorName:S.name,classId,pinned:false});
+    toast("Announcement posted!","success");
+    document.getElementById("annTitle").value=""; document.getElementById("annBody").value="";
+    loadAnnouncements();
+  }catch{toast("Error","error");}
+};
+
+window.deleteAnn=async function(id){
+  if(!confirm("Delete announcement?")) return;
+  try{
+    const {deleteDoc:dd}=await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+    await dd(doc(db,"announcements",id)); toast("Deleted","success"); loadAnnouncements();
+  }catch{toast("Error","error");}
+};
+
+window.viewClass=id=>showPage("students");
+
+/* ── NAV ── */
+const pages=["overview","classes","students","tasks","grading","announce"];
+window.showPage=function(id){
+  pages.forEach(p=>{const el=document.getElementById("page-"+p);if(el)el.classList.toggle("hidden",p!==id);});
+  document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
+  event?.target?.classList.add("active");
+  if(window.innerWidth<768) closeSidebar();
+};
+
+window.toggleSidebar=()=>{document.getElementById("sidebar").classList.toggle("open");document.getElementById("sbOverlay").classList.toggle("hidden");};
+window.closeSidebar=()=>{document.getElementById("sidebar").classList.remove("open");document.getElementById("sbOverlay").classList.add("hidden");};
+window.closeModal=id=>document.getElementById(id).classList.remove("open");
+document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{if(e.target===o)o.classList.remove("open");}));
+window.goSettings=()=>location.href="settings.html";
+window.logout=function(){clearSession();location.href="index.html";};
+
+function setText(id,v){const e=document.getElementById(id);if(e)e.textContent=v}
+</script>
+</body></html>

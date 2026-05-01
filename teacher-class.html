@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Class View · Teacher · Vermeil Quest</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="toastBox" style="position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;width:min(400px,92vw)"></div>
+
+<div class="portal-wrap">
+<aside class="sidebar" id="sidebar">
+  <div class="sb-logo"><h1>Vermeil Quest</h1><p class="subtitle">Teacher Portal</p></div>
+  <nav class="sb-nav">
+    <a class="nav-item" href="teacher-portal.html"><span class="ni">← </span>Back to Portal</a>
+    <div class="sb-section">This Class</div>
+    <a class="nav-item active" onclick="switchTab('roster',this)"><span class="ni">👥</span>Roster</a>
+    <a class="nav-item" onclick="switchTab('tasks',this)"><span class="ni">📋</span>Tasks</a>
+    <a class="nav-item" onclick="switchTab('grades',this)"><span class="ni">⭐</span>Grades</a>
+    <a class="nav-item" onclick="switchTab('announce',this)"><span class="ni">📣</span>Announce</a>
+    <a class="nav-item" onclick="switchTab('analytics',this)"><span class="ni">📊</span>Analytics</a>
+  </nav>
+  <div class="sb-foot">
+    <div class="sb-user">
+      <div class="avatar" id="tcAvatar">T</div>
+      <div class="sb-user-info"><strong id="tcName">Teacher</strong><small>Teacher</small></div>
+    </div>
+  </div>
+</aside>
+
+<div class="sidebar-overlay hidden" id="sbOverlay" onclick="closeSidebar()"></div>
+<button class="hamburger" onclick="toggleSidebar()">☰</button>
+
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h2 id="pageClassName">Class</h2>
+      <p id="pageClassMeta">Loading…</p>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-primary btn-sm" onclick="openAddStudent()">+ Add Student</button>
+      <button class="btn btn-ghost btn-sm" onclick="openCreateTask()">+ Task</button>
+    </div>
+  </div>
+
+  <!-- ROSTER -->
+  <div id="tab-roster">
+    <div class="stat-grid" style="margin-bottom:20px">
+      <div class="card stat-card"><span class="s-icon">👥</span><div class="s-val" id="tcStudentCount">0</div><div class="s-lbl">Students</div></div>
+      <div class="card stat-card"><span class="s-icon">⚡</span><div class="s-val" id="tcAvgXP">0</div><div class="s-lbl">Avg XP</div></div>
+      <div class="card stat-card"><span class="s-icon">🔥</span><div class="s-val" id="tcAvgStreak">0</div><div class="s-lbl">Avg Streak</div></div>
+      <div class="card stat-card"><span class="s-icon">✅</span><div class="s-val" id="tcSubmissions">0</div><div class="s-lbl">Total Submissions</div></div>
+    </div>
+    <div class="card" style="overflow:hidden">
+      <div class="card-body" style="border-bottom:1px solid var(--border)">
+        <div class="search-wrap"><input id="rosterSearch" placeholder="Search students…" oninput="filterRoster()"></div>
+      </div>
+      <table class="tbl">
+        <thead><tr><th>Rank</th><th>Name</th><th>ID</th><th>XP</th><th>Level</th><th>Streak</th><th>Tasks Done</th><th></th></tr></thead>
+        <tbody id="rosterTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TASKS -->
+  <div id="tab-tasks" class="hidden">
+    <div class="card" style="overflow:hidden">
+      <table class="tbl">
+        <thead><tr><th>Title</th><th>Type</th><th>Due Date</th><th>Max XP</th><th>Submitted</th><th></th></tr></thead>
+        <tbody id="classTaskTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- GRADES -->
+  <div id="tab-grades" class="hidden">
+    <div id="gradesList"><div class="empty"><div class="ei">⭐</div><p>No ungraded submissions.</p></div></div>
+  </div>
+
+  <!-- ANNOUNCE -->
+  <div id="tab-announce" class="hidden">
+    <div class="card card-body" style="margin-bottom:16px">
+      <div class="sec-title mb-12">Post Class Announcement</div>
+      <label class="lbl">Title</label><input id="cAnnTitle" placeholder="Announcement…" style="margin-bottom:12px">
+      <label class="lbl">Message</label><textarea id="cAnnBody" placeholder="Your message…" style="margin-bottom:16px"></textarea>
+      <button class="btn btn-primary" onclick="postAnn()">📣 Post to Class</button>
+    </div>
+    <div class="card" style="overflow:hidden"><div id="classAnnList"></div></div>
+  </div>
+
+  <!-- ANALYTICS -->
+  <div id="tab-analytics" class="hidden">
+    <div class="card card-body">
+      <div class="sec-title mb-16">XP Distribution</div>
+      <div id="xpDistribution"></div>
+    </div>
+    <div class="card card-body mt-16">
+      <div class="sec-title mb-16">Task Completion Rate</div>
+      <div id="completionRate"></div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<!-- ADD STUDENT MODAL -->
+<div class="overlay" id="addStudentOverlay">
+  <div class="modal">
+    <div class="modal-hd"><h3>Add Student to Class</h3><button class="modal-close" onclick="closeM('addStudentOverlay')">✕</button></div>
+    <div class="search-wrap" style="margin-bottom:12px"><input id="addSSearch" placeholder="Search by name or ID…" oninput="searchForStudent()"></div>
+    <div id="addSResults"></div>
+  </div>
+</div>
+
+<!-- CREATE TASK MODAL -->
+<div class="overlay" id="createTaskOverlay">
+  <div class="modal">
+    <div class="modal-hd"><h3>Create Task</h3><button class="modal-close" onclick="closeM('createTaskOverlay')">✕</button></div>
+    <label class="lbl">Type</label>
+    <select id="ctType" style="margin-bottom:12px"><option value="task">📋 Task</option><option value="quiz">❓ Quiz</option><option value="lecture">📖 Material</option></select>
+    <label class="lbl">Title</label><input id="ctTitle" placeholder="Task title…" style="margin-bottom:12px">
+    <label class="lbl">Description</label><textarea id="ctDesc" placeholder="Instructions…" style="margin-bottom:12px"></textarea>
+    <label class="lbl">Resource Link (optional)</label><input id="ctLink" placeholder="https://…" style="margin-bottom:12px">
+    <div class="input-row" style="margin-bottom:20px">
+      <div><label class="lbl">Max XP</label><input id="ctXP" type="number" value="50" min="1"></div>
+      <div><label class="lbl">Due Date</label><input id="ctDue" type="date"></div>
+    </div>
+    <button class="btn btn-primary btn-full" id="ctBtn" onclick="createTask()">Assign Task</button>
+  </div>
+</div>
+
+<!-- GRADE MODAL -->
+<div class="overlay" id="gradeOverlay">
+  <div class="modal">
+    <div class="modal-hd"><h3>Grade Submission</h3><button class="modal-close" onclick="closeM('gradeOverlay')">✕</button></div>
+    <div id="gradeSubDetail" style="margin-bottom:16px"></div>
+    <label class="lbl">XP to Award (0–<span id="gradeMax">50</span>)</label>
+    <input id="gradeXP" type="number" min="0" value="50" style="margin-bottom:20px">
+    <button class="btn btn-primary btn-full" id="gradeBtn" onclick="submitGrade()">Award XP</button>
+  </div>
+</div>
+
+<script type="module">
+import {
+  db, queryDocs, addDoc_, getDoc_, getSession, toast, progTag, getLevel, getRankTitle,
+  doc, updateDoc, arrayUnion, increment, deleteDoc, serverTimestamp
+} from "./firebase.js";
+
+const S = getSession();
+if(!S?.id||S.role!=="teacher") location.href="index.html";
+const classId = new URLSearchParams(location.search).get("id");
+if(!classId) location.href="teacher-portal.html";
+
+let classData=null, members=[], classTasks=[], currentSub=null;
+
+document.addEventListener("DOMContentLoaded", init);
+
+async function init(){
+  document.getElementById("tcAvatar").textContent=(S.name||"T")[0].toUpperCase();
+  setText("tcName",S.name||"Teacher");
+  classData=await getDoc_("classes",classId);
+  if(!classData){alert("Class not found");location.href="teacher-portal.html";return;}
+  setText("pageClassName",classData.name||"Class");
+  setText("pageClassMeta",`${classData.section||"—"} · ${classData.program||"—"} · Year ${classData.yearLevel||"—"}`);
+  await Promise.all([loadMembers(),loadTasks(),loadGrades(),loadAnnouncements()]);
+}
+
+async function loadMembers(){
+  const ids=classData.students||[];
+  setText("tcStudentCount",ids.length);
+  const data=[];
+  for(const id of ids){const s=await getDoc_("students",id);if(s)data.push(s);}
+  members=data;
+  const avgXP=data.length?Math.round(data.reduce((s,m)=>s+(m.xp||0),0)/data.length):0;
+  const avgStr=data.length?Math.round(data.reduce((s,m)=>s+(m.streak||0),0)/data.length):0;
+  setText("tcAvgXP",avgXP);
+  setText("tcAvgStreak",avgStr);
+  renderRoster(data);
+  renderXPDist(data);
+}
+
+function renderRoster(list){
+  const sorted=[...list].sort((a,b)=>(b.xp||0)-(a.xp||0));
+  const tbody=document.getElementById("rosterTable");
+  if(!sorted.length){tbody.innerHTML=`<tr><td colspan="8"><div class="empty" style="padding:24px"><p>No students yet.</p></div></td></tr>`;return;}
+  tbody.innerHTML=sorted.map((s,i)=>{
+    const lvl=getLevel(s.xp||0),rank=getRankTitle(lvl);
+    const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`;
+    return `<tr>
+      <td><span class="font-display" style="color:var(--text-3)">${medal}</span></td>
+      <td><div style="font-size:13px;font-weight:600;color:var(--text-2)">${s.name||"—"}</div><div class="text-muted" style="font-size:10px"><span style="color:${rank.color}">${rank.label}</span></div></td>
+      <td><div class="text-muted">${s.id}</div></td>
+      <td><span class="font-display" style="color:var(--blue-300)">${(s.xp||0).toLocaleString()}</span></td>
+      <td><span class="badge b-blue">Lv ${lvl}</span></td>
+      <td>🔥 ${s.streak||0}</td>
+      <td>${s.tasksCompleted||0}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="removeStudent('${s.id}','${(s.name||"").replace(/'/g,"\\'")}')">Remove</button></td>
+    </tr>`;
+  }).join("");
+}
+
+window.filterRoster=function(){
+  const q=document.getElementById("rosterSearch").value.toLowerCase();
+  renderRoster(members.filter(m=>(m.name||"").toLowerCase().includes(q)||(m.id||"").includes(q)));
+};
+
+async function loadTasks(){
+  classTasks=await queryDocs("tasks",[["classId","==",classId]],[["createdAt","desc"]],100);
+  const tbody=document.getElementById("classTaskTable");
+  const icons={task:"📋",quiz:"❓",lecture:"📖"};
+  if(!classTasks.length){tbody.innerHTML=`<tr><td colspan="6"><div class="empty" style="padding:24px"><p>No tasks yet.</p></div></td></tr>`;return;}
+  tbody.innerHTML=classTasks.map(t=>{
+    const due=t.dueDate?.seconds?new Date(t.dueDate.seconds*1000):new Date(t.dueDate||Date.now());
+    return `<tr>
+      <td><div style="font-size:13px;font-weight:600;color:var(--text-2)">${t.title||"—"}</div></td>
+      <td>${icons[t.type]||"📋"} ${t.type}</td>
+      <td>${due.toLocaleDateString()}</td>
+      <td><span class="font-display" style="color:var(--blue-300)">+${t.maxXP||0}</span></td>
+      <td>${(t.submittedBy||[]).length} / ${members.length}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteTask('${t.id}')">Delete</button></td>
+    </tr>`;
+  }).join("");
+  renderCompletionRate(classTasks,members);
+}
+
+async function loadGrades(){
+  const taskIds=classTasks.map(t=>t.id);
+  if(!taskIds.length) return;
+  const allSubs=await queryDocs("submissions",[["classId","==",classId],["graded","==",false]],[],100);
+  setText("tcSubmissions",allSubs.length);
+  const el=document.getElementById("gradesList");
+  if(!allSubs.length){el.innerHTML=`<div class="empty"><div class="ei">⭐</div><p>All caught up!</p></div>`;return;}
+  const maxMap=Object.fromEntries(classTasks.map(t=>[t.id,t.maxXP||50]));
+  el.innerHTML=allSubs.map(s=>`
+    <div class="card card-body" style="margin-bottom:10px;display:flex;gap:14px;align-items:flex-start">
+      <div style="flex:1;min-width:0">
+        <div class="font-display" style="font-size:13px;color:var(--blue-200)">${s.studentName||"—"}</div>
+        <div class="text-muted mt-4">Max XP: ${maxMap[s.taskId]||50}</div>
+        <div style="margin-top:8px;font-size:13px;color:var(--text-2);background:rgba(0,0,0,.25);padding:10px;border-radius:var(--r1);white-space:pre-wrap;word-break:break-word">${s.content||"No content"}</div>
+      </div>
+      <button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="openGrade('${s.id}','${maxMap[s.taskId]||50}')">Grade</button>
+    </div>`).join("");
+}
+
+async function loadAnnouncements(){
+  const anns=await queryDocs("announcements",[["classId","==",classId]],[["createdAt","desc"]],20);
+  const el=document.getElementById("classAnnList");
+  if(!anns.length){el.innerHTML=`<div class="empty" style="padding:24px"><p>No announcements yet.</p></div>`;return;}
+  el.innerHTML=anns.map(a=>`
+    <div style="padding:14px;border-bottom:1px solid var(--border)">
+      <div class="flex items-center justify-between mb-8">
+        <div class="font-display" style="font-size:13px;color:var(--blue-200)">${a.title||"—"}</div>
+        <button class="btn btn-danger btn-sm" onclick="deleteAnn('${a.id}')">Delete</button>
+      </div>
+      <p style="font-size:13px;color:var(--text-2)">${a.body||""}</p>
+    </div>`).join("");
+}
+
+function renderXPDist(list){
+  const el=document.getElementById("xpDistribution");
+  const sorted=[...list].sort((a,b)=>(b.xp||0)-(a.xp||0));
+  const maxXP=sorted[0]?.xp||1;
+  el.innerHTML=sorted.map(s=>{
+    const pct=Math.round(((s.xp||0)/maxXP)*100);
+    return `<div style="margin-bottom:8px">
+      <div class="flex justify-between mb-4">
+        <span style="font-size:12px;color:var(--text-2)">${s.name||"—"}</span>
+        <span class="font-display" style="font-size:12px;color:var(--blue-300)">${(s.xp||0).toLocaleString()} XP</span>
+      </div>
+      <div style="height:6px;background:rgba(0,0,0,.35);border-radius:var(--rf);overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--blue),var(--blue-400));border-radius:var(--rf);transition:width .6s var(--ease)"></div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function renderCompletionRate(tasks,students){
+  const el=document.getElementById("completionRate");
+  if(!tasks.length){el.innerHTML=`<div class="empty" style="padding:16px"><p>No tasks yet.</p></div>`;return;}
+  el.innerHTML=tasks.filter(t=>t.type!=="lecture").map(t=>{
+    const count=(t.submittedBy||[]).length;
+    const total=students.length||1;
+    const pct=Math.round((count/total)*100);
+    return `<div style="margin-bottom:8px">
+      <div class="flex justify-between mb-4">
+        <span style="font-size:12px;color:var(--text-2)">${t.title||"—"}</span>
+        <span style="font-size:12px;color:var(--text-3)">${count}/${total} · ${pct}%</span>
+      </div>
+      <div style="height:6px;background:rgba(0,0,0,.35);border-radius:var(--rf);overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${pct>=80?"var(--green)":pct>=50?"var(--gold)":"var(--red)"};border-radius:var(--rf)"></div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+/* ─ ACTIONS ─ */
+window.searchForStudent=async function(){
+  const q=document.getElementById("addSSearch").value.trim().toLowerCase();
+  const el=document.getElementById("addSResults");
+  if(q.length<2){el.innerHTML="";return;}
+  const all=await queryDocs("students",[],[],300);
+  const res=all.filter(s=>(s.name||"").toLowerCase().includes(q)||(s.id||"").includes(q)).slice(0,8);
+  el.innerHTML=res.length?res.map(s=>`
+    <div class="flex items-center gap-10" style="padding:10px;border-bottom:1px solid rgba(147,197,253,.07)">
+      <div class="avatar" style="width:30px;height:30px;font-size:12px">${(s.name||"?")[0].toUpperCase()}</div>
+      <div style="flex:1"><div style="font-size:13px;color:var(--text-2)">${s.name||"—"}</div><div class="text-muted">${s.id} · ${s.section||"—"}</div></div>
+      <button class="btn btn-primary btn-sm" onclick="addToClass('${s.id}','${(s.name||"").replace(/'/g,"\\'")}')">Add</button>
+    </div>`).join(""):
+    `<div class="text-muted" style="padding:10px">No students found.</div>`;
+};
+
+window.addToClass=async function(sid,sname){
+  const already=(classData.students||[]).includes(sid);
+  if(already){toast(`${sname} is already in this class`,"warn");return;}
+  try{
+    await updateDoc(doc(db,"classes",classId),{students:arrayUnion(sid)});
+    await updateDoc(doc(db,"students",sid),{classes:arrayUnion(classId)});
+    classData.students=[...(classData.students||[]),sid];
+    await addDoc_("notifications",{userId:sid,message:`You've been added to ${classData.name}`,type:"announcement",read:false});
+    toast(`${sname} added!`,"success"); closeM("addStudentOverlay");
+    loadMembers();
+  }catch{toast("Error","error");}
+};
+
+window.removeStudent=async function(sid,sname){
+  if(!confirm(`Remove ${sname} from this class?`)) return;
+  try{
+    const {arrayRemove:ar}=await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+    await updateDoc(doc(db,"classes",classId),{students:ar(sid)});
+    await updateDoc(doc(db,"students",sid),{classes:ar(classId)});
+    classData.students=(classData.students||[]).filter(id=>id!==sid);
+    toast(`${sname} removed`,"success"); loadMembers();
+  }catch{toast("Error","error");}
+};
+
+window.createTask=async function(){
+  const title=document.getElementById("ctTitle").value.trim();
+  if(!title){toast("Enter a title","warn");return;}
+  const btn=document.getElementById("ctBtn"); btn.classList.add("btn-loading"); btn.textContent="";
+  try{
+    const students=classData.students||[];
+    const due=document.getElementById("ctDue").value;
+    const tid=await addDoc_("tasks",{
+      title,type:document.getElementById("ctType").value,
+      description:document.getElementById("ctDesc").value,
+      link:document.getElementById("ctLink").value,
+      classId,teacherId:S.id,teacherName:S.name,
+      maxXP:parseInt(document.getElementById("ctXP").value)||50,
+      dueDate:due?new Date(due):null,
+      assignedTo:students,submittedBy:[]
+    });
+    for(const sid of students){
+      await addDoc_("notifications",{userId:sid,message:`New task in ${classData.name}: ${title}`,type:"task",link:`quest-detail.html?id=${tid}`,read:false});
+    }
+    toast("Task assigned!","success"); closeM("createTaskOverlay");
+    loadTasks();
+  }catch(e){console.error(e);toast("Error","error");}
+  finally{btn.classList.remove("btn-loading"); btn.textContent="Assign Task";}
+};
+
+window.deleteTask=async function(id){
+  if(!confirm("Delete this task?")) return;
+  try{await deleteDoc(doc(db,"tasks",id));toast("Deleted","success");loadTasks();}
+  catch{toast("Error","error");}
+};
+
+window.openGrade=async function(subId,maxXP=50){
+  const sub=await getDoc_("submissions",subId);
+  currentSub={...sub,maxXP};
+  document.getElementById("gradeMax").textContent=maxXP;
+  document.getElementById("gradeXP").value=maxXP;
+  document.getElementById("gradeXP").max=maxXP;
+  document.getElementById("gradeSubDetail").innerHTML=`
+    <div class="font-display" style="margin-bottom:6px">${sub?.studentName||"Student"}</div>
+    <div style="background:rgba(0,0,0,.25);padding:12px;border-radius:var(--r1);font-size:13px;color:var(--text-2);white-space:pre-wrap;word-break:break-word">${sub?.content||"—"}</div>`;
+  document.getElementById("gradeOverlay").classList.add("open");
+};
+
+window.submitGrade=async function(){
+  if(!currentSub) return;
+  const xp=parseInt(document.getElementById("gradeXP").value)||0;
+  const btn=document.getElementById("gradeBtn"); btn.classList.add("btn-loading"); btn.textContent="";
+  try{
+    await updateDoc(doc(db,"submissions",currentSub.id),{xpAwarded:xp,graded:true,gradedAt:serverTimestamp()});
+    await updateDoc(doc(db,"students",currentSub.studentId),{xp:increment(xp),tasksCompleted:increment(1)});
+    await addDoc_("notifications",{userId:currentSub.studentId,message:`Your submission was graded: +${xp} XP`,type:"grade",read:false});
+    await addDoc_(`students/${currentSub.studentId}/xpLog`,{amount:xp,reason:"task-submit"});
+    toast(`+${xp} XP awarded!`,"success"); closeM("gradeOverlay"); loadGrades();
+  }catch{toast("Error","error");}
+  finally{btn.classList.remove("btn-loading"); btn.textContent="Award XP";}
+};
+
+window.postAnn=async function(){
+  const title=document.getElementById("cAnnTitle").value.trim();
+  const body =document.getElementById("cAnnBody").value.trim();
+  if(!title||!body){toast("Fill in both fields","warn");return;}
+  try{
+    await addDoc_("announcements",{title,body,authorId:S.id,authorRole:"teacher",authorName:S.name,classId,pinned:false});
+    for(const sid of classData.students||[]){
+      await addDoc_("notifications",{userId:sid,message:`${classData.name}: ${title}`,type:"announcement",read:false});
+    }
+    toast("Announcement posted!","success");
+    document.getElementById("cAnnTitle").value=""; document.getElementById("cAnnBody").value="";
+    loadAnnouncements();
+  }catch{toast("Error","error");}
+};
+
+window.deleteAnn=async function(id){
+  if(!confirm("Delete?")) return;
+  try{await deleteDoc(doc(db,"announcements",id));toast("Deleted","success");loadAnnouncements();}
+  catch{toast("Error","error");}
+};
+
+const TABS=["roster","tasks","grades","announce","analytics"];
+window.switchTab=function(name,btn){
+  TABS.forEach(t=>document.getElementById("tab-"+t)?.classList.toggle("hidden",t!==name));
+  document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
+  btn?.classList.add("active");
+  if(name==="grades") loadGrades();
+  if(name==="analytics"){renderXPDist(members);renderCompletionRate(classTasks,members);}
+  if(window.innerWidth<768) closeSidebar();
+};
+
+window.openAddStudent =()=>document.getElementById("addStudentOverlay").classList.add("open");
+window.openCreateTask =()=>document.getElementById("createTaskOverlay").classList.add("open");
+window.closeM=id=>document.getElementById(id).classList.remove("open");
+document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{if(e.target===o)o.classList.remove("open");}));
+window.toggleSidebar=()=>{document.getElementById("sidebar").classList.toggle("open");document.getElementById("sbOverlay").classList.toggle("hidden");};
+window.closeSidebar=()=>{document.getElementById("sidebar").classList.remove("open");document.getElementById("sbOverlay").classList.add("hidden");};
+
+function setText(id,v){const e=document.getElementById(id);if(e)e.textContent=v}
+</script>
+</body></html>

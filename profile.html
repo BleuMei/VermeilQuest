@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile · Vermeil Quest</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="toastBox" style="position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;width:min(400px,92vw)"></div>
+<div class="student-wrap">
+  <div class="stu-header anim-float">
+    <div class="stu-logo"><h1 style="font-size:20px">Vermeil Quest</h1><p class="subtitle">My Profile</p></div>
+    <a href="settings.html" class="btn btn-ghost btn-sm">⚙️ Settings</a>
+  </div>
+
+  <!-- HERO -->
+  <div class="card profile-hero anim-float d1">
+    <div class="avatar avatar-xl" id="pAvatar">?</div>
+    <div>
+      <div class="hero-name" id="pName">—</div>
+      <div class="hero-rank mt-4" id="pRank">—</div>
+      <div class="hero-meta mt-4" id="pMeta">—</div>
+    </div>
+    <div class="divider w-full"></div>
+    <div class="stat-row w-full">
+      <div class="stat-box"><span class="sv" id="pLevel">1</span><span class="sl">Level</span></div>
+      <div class="stat-box"><span class="sv" id="pXP">0</span><span class="sl">Total XP</span></div>
+      <div class="stat-box"><span class="sv gold" id="pStreak">0</span><span class="sl">Streak</span></div>
+      <div class="stat-box"><span class="sv" id="pTasks">0</span><span class="sl">Tasks Done</span></div>
+    </div>
+    <div class="w-full">
+      <div class="xp-track"><div class="xp-fill" id="pXPFill" style="width:0%"></div></div>
+      <div class="xp-row"><span id="pXPProg">0/100</span><span id="pXPNext">100 to next</span></div>
+    </div>
+  </div>
+
+  <!-- BADGES -->
+  <div class="anim-float d2">
+    <div class="sec-title mb-12">Achievements & Badges</div>
+    <div class="ach-grid" id="achGrid">
+      <div class="empty"><div class="ei">🏅</div><p>No badges yet. Keep going!</p></div>
+    </div>
+  </div>
+
+  <!-- XP HISTORY -->
+  <div class="card card-body anim-float d3">
+    <div class="sec-title mb-12">Recent XP Activity</div>
+    <div id="xpLog"><div class="empty" style="padding:24px"><p>No activity recorded yet.</p></div></div>
+  </div>
+
+  <!-- MY CLASSES -->
+  <div class="anim-float d4">
+    <div class="sec-title mb-12">Enrolled Classes</div>
+    <div class="class-grid" id="pClasses">
+      <div class="empty"><div class="ei">📚</div><p>No classes yet.</p></div>
+    </div>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <a href="dashboard.html" class="bnav-item"><span class="bi">🏠</span>Home</a>
+  <a href="quests.html"    class="bnav-item"><span class="bi">⚔️</span>Quests</a>
+  <a href="leaderboard.html" class="bnav-item"><span class="bi">🏆</span>Ranks</a>
+  <a href="surveys.html"   class="bnav-item"><span class="bi">📋</span>Surveys</a>
+  <a href="profile.html"   class="bnav-item active"><span class="bi">👤</span>Profile</a>
+</nav>
+
+<script type="module">
+import { db, queryDocs, getSession, getLevel, getXPProgress, getRankTitle, progTag, ACHIEVEMENTS, doc, getDocs, collection, orderBy, limit, query } from "./firebase.js";
+const S=getSession(); if(!S?.id) location.href="index.html";
+
+function setText(id,v){const e=document.getElementById(id);if(e)e.textContent=v}
+function setHTML(id,v){const e=document.getElementById(id);if(e)e.innerHTML=v}
+
+async function init() {
+  const lvl=getLevel(S.xp||0), prog=getXPProgress(S.xp||0), rank=getRankTitle(lvl);
+  const init=(S.name||"?")[0].toUpperCase();
+  document.getElementById("pAvatar").textContent=init;
+  setText("pName", S.name||"Unknown");
+  setHTML("pRank", `<span style="color:${rank.color}">${rank.label} · Level ${lvl}</span>`);
+  setText("pMeta", `${S.program||"—"} · ${S.section||"—"} · Year ${S.yearLevel||"—"} · ID: ${S.id}`);
+  setText("pLevel",  lvl);
+  setText("pXP",     S.xp||0);
+  setText("pStreak", S.streak||0);
+  setText("pTasks",  S.tasksCompleted||0);
+  setText("pXPProg", `${prog} / 100 XP`);
+  setText("pXPNext", `${100-prog} to Lv.${lvl+1}`);
+  document.getElementById("pXPFill").style.width=prog+"%";
+  renderAchievements();
+  await loadXPLog();
+  await loadClasses();
+}
+
+function renderAchievements() {
+  const earned=S.achievements||[];
+  const all=Object.entries(ACHIEVEMENTS);
+  const grid=document.getElementById("achGrid");
+  if(!all.length){grid.innerHTML="";return;}
+  grid.innerHTML=all.filter(([id,a])=>!a.hidden||earned.includes(id)).map(([id,a])=>{
+    const has=earned.includes(id);
+    return `<div class="ach-badge ${has?"earned":"locked"}">
+      <div class="ach-ico">${has?a.icon:"🔒"}</div>
+      <div class="ach-name">${has?a.title:"???"}</div>
+      <div class="ach-desc">${has?a.desc:"Hidden"}</div>
+      <div class="ach-rarity rarity-${a.rarity}">${a.rarity}</div>
+    </div>`;
+  }).join("");
+}
+
+async function loadXPLog() {
+  try {
+    const snap=await getDocs(query(collection(db,`students/${S.id}/xpLog`),orderBy("createdAt","desc"),limit(10)));
+    const logs=snap.docs.map(d=>({id:d.id,...d.data()}));
+    const el=document.getElementById("xpLog");
+    if(!logs.length){el.innerHTML=`<div class="empty" style="padding:24px"><p>No activity yet.</p></div>`;return;}
+    const reasons={"daily-claim":"Daily Quest","task-submit":"Task Submitted","survey":"Survey Answered","quiz":"Quiz Completed"};
+    el.innerHTML=logs.map(l=>`
+      <div class="flex items-center justify-between" style="padding:10px 0;border-bottom:1px solid rgba(147,197,253,.07)">
+        <span style="font-size:13px;color:var(--text-2)">${reasons[l.reason]||l.reason||"XP Earned"}</span>
+        <span style="font-family:var(--display);color:var(--blue-300);font-size:13px">+${l.amount||0} XP</span>
+      </div>`).join("");
+  } catch(e){console.warn(e)}
+}
+
+async function loadClasses() {
+  const classes=await queryDocs("classes",[["students","array-contains",S.id]],[],20);
+  const el=document.getElementById("pClasses");
+  if(!classes.length)return;
+  el.innerHTML=classes.map(c=>`
+    <div class="class-card" onclick="location.href='class-view.html?id=${c.id}'">
+      <div class="class-icon">📘</div>
+      <div class="class-name">${c.name||"Class"}</div>
+      <div class="class-teacher">👤 ${c.teacherName||"—"}</div>
+      <div class="mt-4">${progTag(c.program||"")}</div>
+    </div>`).join("");
+}
+
+init();
+</script>
+</body></html>

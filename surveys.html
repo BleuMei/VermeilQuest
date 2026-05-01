@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Surveys · Vermeil Quest</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="toastBox" style="position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;width:min(400px,92vw)"></div>
+<div class="student-wrap">
+  <div class="stu-header anim-float">
+    <div class="stu-logo"><h1 style="font-size:20px">Vermeil Quest</h1><p class="subtitle">Surveys</p></div>
+    <button class="btn btn-primary btn-sm" onclick="openCreateModal()">+ Create Survey</button>
+  </div>
+
+  <div class="card card-body anim-float d1">
+    <div class="flex items-center justify-between mb-12">
+      <div class="sec-title">Available Surveys</div>
+      <span class="badge b-blue" id="surveyCount">0 surveys</span>
+    </div>
+    <div class="search-wrap mb-12">
+      <input id="searchInput" placeholder="Search surveys…" oninput="filterSurveys()">
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <select id="filterProg" onchange="filterSurveys()" style="flex:1;min-width:110px">
+        <option value="">All Programs</option>
+        <option value="IT">IT</option><option value="CS">CS</option>
+        <option value="CoE">CoE</option><option value="ECE">ECE</option>
+      </select>
+      <select id="filterYear" onchange="filterSurveys()" style="flex:1;min-width:110px">
+        <option value="">All Years</option>
+        <option value="1">1st Year</option><option value="2">2nd Year</option>
+        <option value="3">3rd Year</option><option value="4">4th Year</option>
+      </select>
+    </div>
+    <div id="surveyList"><div class="empty"><div class="ei">📋</div><p>Loading surveys…</p></div></div>
+  </div>
+
+  <!-- My created surveys -->
+  <div class="card card-body anim-float d2">
+    <div class="sec-title mb-12">My Surveys</div>
+    <div id="mySurveyList"><div class="empty" style="padding:20px"><p>You haven't created any surveys yet.</p></div></div>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <a href="dashboard.html" class="bnav-item"><span class="bi">🏠</span>Home</a>
+  <a href="quests.html"    class="bnav-item"><span class="bi">⚔️</span>Quests</a>
+  <a href="leaderboard.html" class="bnav-item"><span class="bi">🏆</span>Ranks</a>
+  <a href="surveys.html"   class="bnav-item active"><span class="bi">📋</span>Surveys</a>
+  <a href="profile.html"   class="bnav-item"><span class="bi">👤</span>Profile</a>
+</nav>
+
+<!-- Create Survey Modal -->
+<div class="overlay" id="createOverlay">
+  <div class="modal">
+    <div class="modal-hd">
+      <h3>📋 Create Survey</h3>
+      <button class="modal-close" onclick="closeCreateModal()">✕</button>
+    </div>
+    <p class="text-muted mb-16">Post your research survey. Other students earn <strong>+10 XP</strong> for answering, and you earn <strong>+5 XP</strong> for creating.</p>
+    <label class="lbl">Survey Title</label>
+    <input id="sTitle" placeholder="e.g. Study Habits Among IT Students" style="margin-bottom:12px">
+    <label class="lbl">Google Form Link</label>
+    <input id="sLink" type="url" placeholder="https://forms.google.com/…" style="margin-bottom:12px">
+    <label class="lbl">Target Program (optional)</label>
+    <select id="sProg" style="margin-bottom:12px">
+      <option value="">All Programs</option>
+      <option value="IT">IT</option><option value="CS">CS</option>
+      <option value="CoE">CoE</option><option value="ECE">ECE</option>
+    </select>
+    <label class="lbl">Target Year Level (optional)</label>
+    <select id="sYear" style="margin-bottom:20px">
+      <option value="">All Years</option>
+      <option value="1">1st Year</option><option value="2">2nd Year</option>
+      <option value="3">3rd Year</option><option value="4">4th Year</option>
+    </select>
+    <button class="btn btn-primary btn-full" id="createBtn" onclick="createSurvey()">Post Survey · +5 XP</button>
+  </div>
+</div>
+
+<script type="module">
+import { db, queryDocs, addDoc_, getSession, saveSession, toast, doc, updateDoc, increment, arrayUnion } from "./firebase.js";
+const S=getSession(); if(!S?.id) location.href="index.html";
+
+let allSurveys=[];
+
+async function load() {
+  allSurveys=await queryDocs("surveys",[["active","==",true]],[["createdAt","desc"]],100);
+  const mine=await queryDocs("surveys",[["creatorId","==",S.id]],[["createdAt","desc"]],20);
+  document.getElementById("surveyCount").textContent=`${allSurveys.length} surveys`;
+  renderList(allSurveys);
+  renderMine(mine);
+}
+
+function renderList(list) {
+  const el=document.getElementById("surveyList");
+  if(!list.length){el.innerHTML=`<div class="empty"><div class="ei">📋</div><p>No surveys match your filter.</p></div>`;return;}
+  el.innerHTML=list.map(sv=>{
+    const done=(sv.answeredBy||[]).includes(S.id);
+    const isMine=sv.creatorId===S.id;
+    return `<div class="survey-card">
+      <div style="font-size:24px">📋</div>
+      <div style="flex:1;min-width:0">
+        <div class="font-display" style="font-size:13px;color:var(--text-2)">${sv.title||"Survey"}</div>
+        <div class="text-muted mt-4">By ${sv.creatorName||"—"} · +${sv.xpReward||10} XP</div>
+        ${sv.targetProgram?`<span class="badge b-blue" style="margin-top:4px">${sv.targetProgram}</span>`:""}
+        ${sv.targetYear?`<span class="badge b-teal" style="margin-top:4px">Year ${sv.targetYear}</span>`:""}
+        <div class="text-muted" style="margin-top:4px">${(sv.answeredBy||[]).length} response${(sv.answeredBy||[]).length!==1?"s":""}</div>
+      </div>
+      ${isMine?`<span class="badge b-gold">Mine</span>`:
+        done?`<span class="badge b-green">✓ Done</span>`:
+        `<button class="btn btn-primary btn-sm" onclick="answer('${sv.id}','${sv.formLink||"#"}')">Answer</button>`}
+    </div>`;
+  }).join("");
+}
+
+function renderMine(list) {
+  const el=document.getElementById("mySurveyList");
+  if(!list.length){el.innerHTML=`<div class="empty" style="padding:20px"><p>You haven't created any surveys yet.</p></div>`;return;}
+  el.innerHTML=list.map(sv=>`
+    <div class="survey-card">
+      <div style="font-size:24px">📋</div>
+      <div style="flex:1;min-width:0">
+        <div class="font-display" style="font-size:13px;color:var(--text-2)">${sv.title}</div>
+        <div class="text-muted mt-4">${(sv.answeredBy||[]).length} responses · ${sv.active?"Active":"Inactive"}</div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="closeSurvey('${sv.id}')">Close</button>
+    </div>`).join("");
+}
+
+window.filterSurveys=function(){
+  const q=document.getElementById("searchInput").value.toLowerCase();
+  const p=document.getElementById("filterProg").value;
+  const y=document.getElementById("filterYear").value;
+  let list=allSurveys.filter(sv=>{
+    const matchQ=!q||(sv.title||"").toLowerCase().includes(q);
+    const matchP=!p||!sv.targetProgram||sv.targetProgram===p;
+    const matchY=!y||!sv.targetYear||String(sv.targetYear)===y;
+    return matchQ&&matchP&&matchY;
+  });
+  renderList(list);
+};
+
+window.answer=async function(id,link){
+  try{
+    await updateDoc(doc(db,"surveys",id),{answeredBy:arrayUnion(S.id)});
+    await updateDoc(doc(db,"students",S.id),{surveysAnswered:increment(1),xp:increment(10)});
+    S.surveysAnswered=(S.surveysAnswered||0)+1; S.xp=(S.xp||0)+10; saveSession(S);
+    toast("+10 XP · Survey recorded! 📋","xp");
+    window.open(link,"_blank"); load();
+  }catch{toast("Error","error");}
+};
+
+window.closeSurvey=async function(id){
+  try{
+    await updateDoc(doc(db,"surveys",id),{active:false});
+    toast("Survey closed","success"); load();
+  }catch{toast("Error","error");}
+};
+
+window.openCreateModal =()=>document.getElementById("createOverlay").classList.add("open");
+window.closeCreateModal=()=>document.getElementById("createOverlay").classList.remove("open");
+document.getElementById("createOverlay").addEventListener("click",e=>{if(e.target.id==="createOverlay")closeCreateModal();});
+
+window.createSurvey=async function(){
+  const title=document.getElementById("sTitle").value.trim();
+  const link =document.getElementById("sLink").value.trim();
+  if(!title){toast("Enter a title","warn");return;}
+  if(!link) {toast("Enter a form link","warn");return;}
+  const btn=document.getElementById("createBtn");
+  btn.classList.add("btn-loading"); btn.textContent="";
+  try{
+    await addDoc_("surveys",{
+      title, formLink:link,
+      creatorId:S.id, creatorName:S.name,
+      targetProgram:document.getElementById("sProg").value||null,
+      targetYear:document.getElementById("sYear").value||null,
+      xpReward:10, answeredBy:[], active:true
+    });
+    await updateDoc(doc(db,"students",S.id),{xp:increment(5)});
+    S.xp=(S.xp||0)+5; saveSession(S);
+    toast("+5 XP · Survey posted!","gold"); closeCreateModal();
+    document.getElementById("sTitle").value=""; document.getElementById("sLink").value="";
+    load();
+  }catch{toast("Error creating survey","error");}
+  finally{btn.classList.remove("btn-loading"); btn.textContent="Post Survey · +5 XP";}
+};
+
+load();
+</script>
+</body></html>

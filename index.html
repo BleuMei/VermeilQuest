@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vermeil Quest — Enter the Academy</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px;gap:16px}
+    .login-wrap{width:100%;max-width:380px;display:flex;flex-direction:column;gap:16px}
+    .login-card{padding:36px 30px}
+    .crest{width:68px;height:68px;border-radius:50%;background:rgba(59,130,246,.1);border:1.5px solid rgba(147,197,253,.3);display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 18px;box-shadow:var(--g1);animation:orbPulse 3s ease-in-out infinite}
+    @keyframes orbPulse{0%,100%{box-shadow:var(--g1)}50%{box-shadow:var(--g2)}}
+    .input-block{margin-top:14px}
+    .error-msg{font-size:12px;color:var(--red);text-align:center;min-height:18px;margin-top:6px;opacity:0;transition:opacity .2s}
+    .error-msg.show{opacity:1}
+    .hint{font-family:var(--prose);font-style:italic;font-size:13px;color:var(--text-3);text-align:center;margin-top:10px;line-height:1.5}
+    .ver{font-size:9px;letter-spacing:3px;color:rgba(100,116,139,.35);text-transform:uppercase;text-align:center}
+  </style>
+</head>
+<body>
+
+<div id="toastBox" style="position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;width:min(400px,92vw)"></div>
+
+<div class="login-wrap anim-float">
+  <div class="login-card card">
+    <div class="crest">⚔️</div>
+    <h1 style="text-align:center;font-size:26px">Vermeil Quest</h1>
+    <p class="subtitle" style="text-align:center;margin-top:4px">Enter the Academy</p>
+
+    <div class="input-block">
+      <label class="lbl" for="uid">Student / Staff ID</label>
+      <input id="uid" type="text" placeholder="e.g. 2024-00001" autocomplete="username" spellcheck="false">
+    </div>
+    <div class="input-block">
+      <label class="lbl" for="pw">Password</label>
+      <input id="pw" type="password" placeholder="Default: your ID number" autocomplete="current-password">
+    </div>
+
+    <p class="error-msg" id="errMsg"></p>
+
+    <button class="btn btn-primary btn-full" id="loginBtn" style="margin-top:18px" onclick="doLogin()">
+      Enter Quest
+    </button>
+
+    <p class="hint">First time? Your password is your ID number.<br>You can change it later in Settings.</p>
+  </div>
+
+  <p class="ver">Vermeil Quest v1.0 · ECT Academy Interface</p>
+</div>
+
+<script type="module">
+import { db, getDoc_, saveSession, getSession, toast } from "./firebase.js";
+import { doc, getDoc } from "./firebase.js";
+
+/* redirect if already logged in */
+const s = getSession();
+if (s?.id) {
+  const map = { admin:"admin-portal.html", teacher:"teacher-portal.html", student:"dashboard.html" };
+  location.href = map[s.role] || "index.html";
+}
+
+const COLLECTIONS = ["admins","teachers","students"];
+const ROUTES      = { admin:"admin-portal.html", teacher:"teacher-portal.html", student:"dashboard.html" };
+
+function err(msg) {
+  const el = document.getElementById("errMsg");
+  el.textContent = msg; el.classList.add("show");
+}
+function clearErr() { document.getElementById("errMsg").classList.remove("show"); }
+
+function setLoading(on) {
+  const btn = document.getElementById("loginBtn");
+  if (on) { btn.classList.add("btn-loading"); btn.textContent = ""; btn.disabled = true; }
+  else     { btn.classList.remove("btn-loading"); btn.textContent = "Enter Quest"; btn.disabled = false; }
+}
+
+window.doLogin = async function() {
+  clearErr();
+  const id = document.getElementById("uid").value.trim();
+  const pw = document.getElementById("pw").value.trim();
+  if (!id) { err("Please enter your ID."); return; }
+  if (!pw) { err("Please enter your password."); return; }
+  setLoading(true);
+  try {
+    let data = null, role = null;
+    for (const col of COLLECTIONS) {
+      const d = await getDoc_(col, id);
+      if (d) { data = d; role = col.replace(/s$/,""); break; }
+    }
+    if (!data) { err("ID not found. Contact your administrator."); setLoading(false); return; }
+    const stored = data.password || id;
+    if (pw !== stored) { err("Incorrect password."); setLoading(false); document.getElementById("pw").value=""; return; }
+
+    const session = {
+      id, role,
+      name:      data.name      || "Unknown",
+      program:   data.program   || "",
+      yearLevel: data.yearLevel || "",
+      section:   data.section   || "",
+      email:     data.email     || "",
+      xp:            data.xp            || 0,
+      level:         data.level         || 1,
+      streak:        data.streak        || 0,
+      lastLogin:     data.lastLogin     || null,
+      lastClaimDate: data.lastClaimDate || null,
+      achievements:  data.achievements  || [],
+      surveysAnswered: data.surveysAnswered || 0,
+      tasksCompleted:  data.tasksCompleted  || 0,
+    };
+    saveSession(session);
+    toast(`Welcome back, ${session.name.split(" ")[0]}! ⚔️`, "success", 1500);
+    setTimeout(() => { location.href = ROUTES[role] || "dashboard.html"; }, 900);
+  } catch(e) {
+    console.error(e);
+    err("Login failed. Check your connection.");
+    setLoading(false);
+  }
+};
+
+/* enter key */
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("input").forEach(inp => {
+    inp.addEventListener("keydown", e => { if (e.key==="Enter") window.doLogin(); });
+    inp.addEventListener("input",   clearErr);
+  });
+});
+</script>
+</body>
+</html>
