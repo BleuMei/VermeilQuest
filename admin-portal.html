@@ -41,7 +41,7 @@
   </div>
 </aside>
 
-<div class="sidebar-overlay hidden" id="sbOverlay" onclick="closeSidebar()"></div>
+<div class="sidebar-overlay" id="sbOverlay" onclick="closeSidebar()"></div>
 <button class="hamburger" onclick="toggleSidebar()">☰</button>
 
 <!-- MAIN -->
@@ -65,12 +65,12 @@
       <div class="card stat-card"><span class="s-icon">🔥</span><div class="s-val" id="ovStreaks">—</div><div class="s-lbl">Active Streaks</div></div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-      <div class="card card-body">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px">
+      <div class="card card-body" style="min-width:0;overflow:hidden">
         <div class="sec-title mb-12">Top Students · Department</div>
         <div id="ovTopStudents"></div>
       </div>
-      <div class="card card-body">
+      <div class="card card-body" style="min-width:0;overflow:hidden">
         <div class="sec-title mb-12">Program Breakdown</div>
         <div id="ovProgBreakdown"></div>
       </div>
@@ -87,12 +87,12 @@
     <div class="topbar">
       <div class="topbar-left"><h2>Analytics</h2><p>Engagement and progress data</p></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-      <div class="card card-body">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px">
+      <div class="card card-body" style="min-width:0">
         <div class="sec-title mb-12">XP by Program</div>
         <canvas id="chartProgram" height="220"></canvas>
       </div>
-      <div class="card card-body">
+      <div class="card card-body" style="min-width:0">
         <div class="sec-title mb-12">Students per Year Level</div>
         <canvas id="chartYear" height="220"></canvas>
       </div>
@@ -332,14 +332,14 @@ async function renderOverview() {
   const topEl = document.getElementById("ovTopStudents");
   topEl.innerHTML = allStudents.slice(0,8).map((s,i)=>`
     <div class="flex items-center gap-10" style="padding:8px 0;border-bottom:1px solid rgba(147,197,253,.06)">
-      <span class="font-display" style="font-size:12px;color:var(--text-3);width:22px">#${i+1}</span>
-      <div class="avatar" style="width:28px;height:28px;font-size:11px">${(s.name||"?")[0].toUpperCase()}</div>
+      <span class="font-display" style="font-size:12px;color:var(--text-3);width:22px;flex-shrink:0">#${i+1}</span>
+      <div class="avatar" style="width:28px;height:28px;font-size:11px;flex-shrink:0">${(s.name||"?")[0].toUpperCase()}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name||"—"}</div>
-        <div class="text-muted" style="font-size:10px">${s.section||"—"}</div>
+        <div class="text-muted" style="font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.section||"—"}</div>
       </div>
-      ${progTag(s.program||"")}
-      <span class="font-display" style="font-size:12px;color:var(--blue-300)">${(s.xp||0).toLocaleString()}</span>
+      <div style="flex-shrink:0">${progTag(s.program||"")}</div>
+      <span class="font-display" style="font-size:12px;color:var(--blue-300);white-space:nowrap;flex-shrink:0">${(s.xp||0).toLocaleString()}</span>
     </div>`).join("");
 
   // Program breakdown
@@ -477,7 +477,6 @@ window.addStudent = async function() {
   if(!name||!id){toast("Name and ID are required","warn");return;}
   const btn=document.getElementById("addStudentBtn"); btn.classList.add("btn-loading"); btn.textContent="";
   try{
-    await fetch; // dummy — just use setDoc
     const {setDoc:sd,doc:d}=await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
     await sd(d(db,"students",id),{
       id, name, role:"student",
@@ -719,14 +718,15 @@ window.showPage = function(id, el) {
   document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
   const page=document.getElementById("page-"+id);
   if(page) page.classList.remove("hidden");
+  /* el is the nav-item clicked — passed explicitly from onclick */
   if(el) el.classList.add("active");
   if(PAGE_ACTIONS[id]) PAGE_ACTIONS[id]();
   if(window.innerWidth<768) closeSidebar();
 };
 
 window.openTab=function(tabId){ document.getElementById(tabId)?.click(); };
-window.toggleSidebar=()=>{ document.getElementById("sidebar").classList.toggle("open"); document.getElementById("sbOverlay").classList.toggle("hidden"); };
-window.closeSidebar=()=>{ document.getElementById("sidebar").classList.remove("open"); document.getElementById("sbOverlay").classList.add("hidden"); };
+window.toggleSidebar=()=>{ document.getElementById("sidebar").classList.toggle("open"); document.getElementById("sbOverlay").classList.toggle("visible"); };
+window.closeSidebar=()=>{ document.getElementById("sidebar").classList.remove("open"); document.getElementById("sbOverlay").classList.remove("visible"); };
 window.closeModal=id=>document.getElementById(id).classList.remove("open");
 document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{ if(e.target===o) o.classList.remove("open"); }));
 window.logout=function(){ clearSession(); location.href="index.html"; };
